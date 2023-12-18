@@ -78,15 +78,18 @@ export default class Fetch {
    * @param key 缓存Key.
    * @param callback 数据回执函数.
    * @param minute 缓存时间 (分钟).
+   * @param isCache 是否开启缓存.
    */
-  async cache<T>(key: string, callback: () => Promise<T>, minute: number) {
+  async cache<T>(key: string, callback: () => Promise<T>, minute: number, isCache: boolean) {
     const cacheKey = 'CACHE_' + key;
-    const cacheValue = localStorage.getItem(cacheKey);
-    if (cacheValue !== null) {
-      const result = JSON.parse(cacheValue) as T;
-      const { expireTime } = (result as { expireTime: number });
-      if (expireTime !== undefined && expireTime >= new Date().getTime()) {
-        return result;
+    if (isCache) {
+      const cacheValue = localStorage.getItem(cacheKey);
+      if (cacheValue !== null) {
+        const result = JSON.parse(cacheValue) as T;
+        const { expireTime } = (result as { expireTime: number });
+        if (expireTime !== undefined && expireTime >= new Date().getTime()) {
+          return result;
+        }
       }
     }
     const response = await callback();
