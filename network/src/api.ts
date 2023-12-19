@@ -35,8 +35,9 @@ export default class Fetch {
    * @param path 路径.
    * @param params 参数.
    * @param body 内容体.
+   * @param header 头部.
    */
-  async post<T>(path: string, params?: any, body?: any): Promise<JsonResponse<T>> {
+  async post<T>(path: string, params?: any, body?: any, header?: any): Promise<JsonResponse<T>> {
     const paramQuery = new URLSearchParams();
     Object.keys(params || {})
       .forEach(key => {
@@ -46,6 +47,7 @@ export default class Fetch {
       method: 'POST',
       headers: {
         ...this.authorization(),
+        ...(header || {}),
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body || {})
@@ -54,11 +56,55 @@ export default class Fetch {
   }
 
   /**
+   * 发送POST/Form 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param form Form参数.
+   * @param header 头部.
+   */
+  async postForm<T>(path: string, params?: any, form?: any, header?: any): Promise<JsonResponse<T>> {
+    const paramQuery = new URLSearchParams();
+    Object.keys(params || {})
+      .forEach(key => {
+        paramQuery.append(key, params[key]);
+      });
+    const formData = new FormData();
+    const appendFormData = (data: any, parentKey = '') => {
+      for (const key in data) {
+        const currentKey = parentKey ? `${parentKey}[${key}]` : key;
+        if (typeof data[key] === 'object' && data[key] !== null) {
+          appendFormData(data[key], currentKey);
+        } else if (Array.isArray(data[key])) {
+          data[key].forEach((item: any, index: number) => {
+            const arrayKey = `${currentKey}[${index}]`;
+            appendFormData({ [arrayKey]: item });
+          });
+        } else {
+          formData.append(currentKey, data[key]);
+        }
+      }
+    };
+    appendFormData(form);
+
+    const response = await fetch(this.pathPrefix + path + (paramQuery.toString() === '' ? '' : '?') + paramQuery.toString(), {
+      method: 'POST',
+      headers: {
+        ...this.authorization(),
+        ...(header || {}),
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: formData
+    });
+    return this.responseJson<T>(response);
+  }
+
+  /**
    * 发送Get 请求.
    * @param path 路径.
    * @param params 参数.
+   * @param header 头部.
    */
-  async get<T>(path: string, params?: any): Promise<JsonResponse<T>> {
+  async get<T>(path: string, params?: any, header?: any): Promise<JsonResponse<T>> {
     const paramQuery = new URLSearchParams();
     Object.keys(params || {})
       .forEach(key => {
@@ -67,7 +113,8 @@ export default class Fetch {
     const response = await fetch(this.pathPrefix + path + '?' + paramQuery.toString(), {
       method: 'GET',
       headers: {
-        ...this.authorization()
+        ...this.authorization(),
+        ...(header || {})
       }
     });
     return this.responseJson<T>(response);

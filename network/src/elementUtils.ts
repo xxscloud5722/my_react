@@ -1,4 +1,4 @@
-export class ElementUtils {
+export default class ElementUtils {
   /**
    * 选择文件本地文件.
    */
