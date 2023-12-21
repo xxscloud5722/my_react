@@ -16,7 +16,7 @@ export class Session {
     const loginUser: {
       accessToken: string | undefined,
       token: string | undefined
-    } = JSON.parse(localStorage.getItem(key) || '{}');
+    } = JSON.parse(localStorage.getItem(key) || sessionStorage.getItem(key) || '{}');
     if (window.accessTokenKey !== undefined && window.accessTokenKey !== '') {
       return (loginUser as never)[window.accessTokenKey];
     }
