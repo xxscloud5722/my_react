@@ -1,3 +1,4 @@
 network/.idea/
-network/dist/
-network/node_modules/
+*/dist/
+*/node_modules/
+assembly/.idea/
