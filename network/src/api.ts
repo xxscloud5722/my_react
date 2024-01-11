@@ -20,6 +20,16 @@ export type RequestData<T> = {
   success: boolean
 }
 
+/**
+ * 其它菜单.
+ */
+export type Option = {
+  /**
+   * 中止信号量.
+   */
+  signal?: AbortSignal
+}
+
 export default class Fetch {
   /**
    * 请求地址.
@@ -36,8 +46,9 @@ export default class Fetch {
    * @param params 参数.
    * @param body 内容体.
    * @param header 头部.
+   * @param option 选项.
    */
-  async post<T>(path: string, params?: any, body?: any, header?: any): Promise<JsonResponse<T>> {
+  async post<T>(path: string, params?: any, body?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
     const paramQuery = new URLSearchParams();
     Object.keys(params || {})
       .forEach(key => {
@@ -50,7 +61,8 @@ export default class Fetch {
         ...(header || {}),
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(body || {})
+      body: JSON.stringify(body || {}),
+      signal: option?.signal || null
     });
     return this.responseJson<T>(response);
   }
@@ -61,8 +73,9 @@ export default class Fetch {
    * @param params 参数.
    * @param form Form参数.
    * @param header 头部.
+   * @param option 选项.
    */
-  async postForm<T>(path: string, params?: any, form?: any, header?: any): Promise<JsonResponse<T>> {
+  async postForm<T>(path: string, params?: any, form?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
     const paramQuery = new URLSearchParams();
     Object.keys(params || {})
       .forEach(key => {
@@ -70,7 +83,7 @@ export default class Fetch {
       });
     const formData = new FormData();
     const appendFormData = (data: any, parentKey = '') => {
-      for (const key in data) {
+      for (const key of data) {
         const currentKey = parentKey ? `${parentKey}[${key}]` : key;
         if (typeof data[key] === 'object' && data[key] !== null) {
           appendFormData(data[key], currentKey);
@@ -93,7 +106,8 @@ export default class Fetch {
         ...(header || {}),
         'Content-Type': 'application/x-www-form-urlencoded'
       },
-      body: formData
+      body: formData,
+      signal: option?.signal || null
     });
     return this.responseJson<T>(response);
   }
@@ -103,8 +117,9 @@ export default class Fetch {
    * @param path 路径.
    * @param params 参数.
    * @param header 头部.
+   * @param option 选项.
    */
-  async get<T>(path: string, params?: any, header?: any): Promise<JsonResponse<T>> {
+  async get<T>(path: string, params?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
     const paramQuery = new URLSearchParams();
     Object.keys(params || {})
       .forEach(key => {
@@ -115,7 +130,8 @@ export default class Fetch {
       headers: {
         ...this.authorization(),
         ...(header || {})
-      }
+      },
+      signal: option?.signal || null
     });
     return this.responseJson<T>(response);
   }
