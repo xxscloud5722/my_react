@@ -14,5 +14,11 @@
     "src/**/*.ts",
     "src/**/*.d.ts",
     "src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "./node_modules",
+    "./node_modules/*",
+    "./node_modules/@types/node/index.d.ts"
   ]
 }
