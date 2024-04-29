@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { Collapse, Modal } from 'antd';
 import { CaretRightOutlined } from '@ant-design/icons';
 import { css } from '@emotion/css';
@@ -11,7 +11,7 @@ export default class Modals {
     messageTitle,
     message,
     callback
-  }: { title: string, content: string, messageTitle: string, message: string, callback?: () => void | undefined }) {
+  }: { title: string | ReactNode, content: string, messageTitle: string, message: string, callback?: () => void | undefined }) {
     Modal.error({
       title,
       content: <div>
