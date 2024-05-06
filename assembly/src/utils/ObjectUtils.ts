@@ -1,3 +1,5 @@
+import _ from 'lodash';
+
 export default class ObjectUtils {
   /**
    * 解析日期.
@@ -25,7 +27,45 @@ export default class ObjectUtils {
       }
       return [s, e];
     }
-    return null;
+    return value;
+  }
+
+  /**
+   * 解析路径参数.
+   * @param data 表单数据.
+   */
+  public static parsePathObject(data: any) {
+    const keys = Object.keys(data);
+    const result: any = {};
+    for (const key of keys) {
+      const value = data[key];
+      if (key.indexOf('.') > -1) {
+        _.set(result, key, value);
+      } else {
+        result[key] = value;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * 解析表单数据.
+   * @param data 表单数据.
+   * @param offset 时间是否偏移 (单位: 天).
+   */
+  public static parseFormObject(data: any, offset: number = 1) {
+    const dateReg = /^\d{4}-\d{2}-\d{2}$/;
+    const keys = Object.keys(data);
+    const result: any = {};
+    for (const key of keys) {
+      let value = data[key];
+      // 如果是日期类型
+      if (value instanceof Array && value.length > 1 && dateReg.test((value[0] || '').split(' ')[0]) && dateReg.test((value[1] || '').split(' ')[0])) {
+        value = ObjectUtils.parseFormDate(data, key, offset);
+      }
+      result[key] = value;
+    }
+    return ObjectUtils.parsePathObject(result);
   }
 
   /**
