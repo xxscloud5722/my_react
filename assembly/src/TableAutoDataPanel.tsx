@@ -11,14 +11,7 @@ import ImportModal, { ImportData } from './ImportModal';
 const G_VARIABLE = {
   searchFormParams: {} as any,
   formParams: () => {
-    const result: any = {};
-    for (const key of Object.keys(G_VARIABLE.searchFormParams)) {
-      const keys = key.split('---');
-      if (keys.length > 1) {
-        result[keys[1]] = (G_VARIABLE.searchFormParams as any)[key];
-      }
-    }
-    return result;
+    return { ...G_VARIABLE.searchFormParams };
   },
   reset: () => {
     G_VARIABLE.searchFormParams = {};
@@ -51,7 +44,15 @@ export declare type TableConfig = {
     message: string,
     enableSearchForm: boolean,
     searchForm: {
-      columns: { title?: string | ReactNode | undefined, enableTitleNode?: boolean | undefined, key: string, valueType: string, valueCode: string, valueEnum: {} }[]
+      columns: {
+        title?: string | ReactNode | undefined,
+        enableTitleNode?: boolean | undefined,
+        key: string,
+        valueType: string,
+        valueCode: string,
+        valueEnum: {},
+        listening: string | undefined
+      }[]
     }[],
     modules: string[]
     exportConfig: { code: string, label: string }[],
@@ -170,6 +171,19 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
       });
     }
   };
+  const requestSelectValue = async (valueCode: string, params?: {} | undefined): Promise<{ label: string, value: string }[]> => {
+    /* eslint-disable no-await-in-loop */
+    const selectResult = await props.request?.dataList<{
+      success: boolean,
+      message: string,
+      data: { label: string, value: string }[]
+    }>?.(valueCode, { ...(params || {}) }, { signal: abortController?.signal });
+    if (!selectResult.success) {
+      messageApi.error(selectResult.message);
+      return [];
+    }
+    return selectResult.data;
+  };
   const requestTableConfig = async (code: string) => {
     return props.request.config<{ success: boolean, message: string, data: TableConfig }>(code, { signal: abortController?.signal })
       .then(async result => {
@@ -178,18 +192,8 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
             const columns = result.data.config?.searchForm[0].columns || [];
             for (const it of columns) {
               if (it.valueType === 'select' && it.valueCode !== undefined && it.valueCode !== '') {
-                /* eslint-disable no-await-in-loop */
-                const selectResult = await props.request?.dataList<{
-                  success: boolean,
-                  message: string,
-                  data: { label: string, value: string }[]
-                }>?.(it.valueCode, {}, { signal: abortController?.signal });
-                if (!selectResult.success) {
-                  messageApi.error(selectResult.message);
-                  continue;
-                }
                 const selectItem: any = {};
-                selectResult.data.forEach(it => {
+                (await requestSelectValue(it.valueCode)).forEach(it => {
                   selectItem[it.value] = {
                     text: it.label,
                     status: it.value
@@ -210,6 +214,47 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
         }
         return result;
       });
+  };
+  const parseFormValue = (value: any) => {
+    const params: any = { ...value };
+    const formItems = tableConfig.config?.searchForm[0]?.columns;
+    for (const key of Object.keys(params)) {
+      const keyId = key.split('---')[1];
+      const value = params[key];
+      const formItem = formItems?.find(it => it.key.split('---')[1] === keyId);
+      if (formItem === undefined) {
+        continue;
+      }
+      if ((formItem.valueType || '').indexOf('date') <= -1) {
+        continue;
+      }
+      if (Array.isArray(value) && value.length > 0) {
+        const end = new Date(value[1]);
+        end.setDate(end.getDate() + 1);
+        params[key] = [value[0], end.getFullYear() + '-'
+        + (end.getMonth() + 1).toString()
+          .padStart(2, '0') + '-'
+        + end.getDate()
+          .toString()
+          .padStart(2, '0')];
+      }
+    }
+    for (const key of Object.keys(params)) {
+      const value = params[key];
+      if (value !== null && value !== undefined && Array.isArray(value) && value.length <= 0) {
+        params[key] = null;
+      }
+    }
+    const result: any = {};
+    for (const key of Object.keys(params)) {
+      const keyId: string | undefined = key.split('---')[1];
+      if (keyId !== undefined) {
+        result[keyId] = params[key];
+      } else {
+        result[key] = params[key];
+      }
+    }
+    return result;
   };
   const rendering = (tableConfig: TableConfig) => {
     if (tableConfig.config?.groups !== undefined) {
@@ -256,7 +301,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
     setIsOpenImportModal(true);
   };
   const onConfirmImport = async (excelData: ImportData) => {
-    return await props.request.importData<{ success: boolean, data: boolean, message: string }>(
+    return props.request.importData<{ success: boolean, data: boolean, message: string }>(
       code,
       excelData,
       { signal: abortController?.signal }
@@ -374,38 +419,41 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
           }}
           className="search-beta-form"
           onFinish={async (formParams: {}) => {
-            const formItems = tableConfig.config?.searchForm[0]?.columns;
-            const params = formParams as any;
-            for (const key of Object.keys(params)) {
-              const keyId = key.split('---')[1];
-              const value = params[key];
-              const formItem = formItems?.find(it => it.key.split('---')[1] === keyId);
-              if (formItem === undefined) {
-                continue;
-              }
-              if ((formItem.valueType || '').indexOf('date') <= -1) {
-                continue;
-              }
-              if (Array.isArray(value) && value.length > 0) {
-                const end = new Date(value[1]);
-                end.setDate(end.getDate() + 1);
-                params[key] = [value[0], end.getFullYear() + '-'
-                + (end.getMonth() + 1).toString()
-                  .padStart(2, '0') + '-'
-                + end.getDate()
-                  .toString()
-                  .padStart(2, '0')];
-              }
-            }
-            for (const key of Object.keys(params)) {
-              const value = params[key];
-              if (value !== null && value !== undefined && Array.isArray(value) && value.length <= 0) {
-                params[key] = null;
-              }
-            }
-            G_VARIABLE.searchFormParams = params;
+            G_VARIABLE.searchFormParams = parseFormValue(formParams);
             await tableRef.current?.reload();
             setCurrentPage(1);
+          }}
+          onValuesChange={async (formParams) => {
+            const params = parseFormValue(formParams);
+            const searchForm = tableConfig.config?.searchForm?.map(it => {
+              return {
+                ...it,
+                key: '_' + (new Date().getTime())
+              };
+            });
+            const formItems = searchForm?.[0]?.columns;
+            const keys = Object.keys(params);
+            const listeningFormItems = formItems?.filter(it => it.listening !== undefined && it.listening !== ''
+              && it.valueCode !== undefined && it.valueCode !== '' && keys.indexOf(it.listening) > -1);
+            if (listeningFormItems !== undefined && listeningFormItems.length > 0) {
+              for (const formItem of listeningFormItems) {
+                const selectItem: any = {};
+                (await requestSelectValue(formItem.valueCode, params)).forEach(it => {
+                  selectItem[it.value] = {
+                    text: it.label,
+                    status: it.value
+                  };
+                });
+                formItem.valueEnum = selectItem;
+              }
+              setTableConfig({
+                ...tableConfig,
+                config: {
+                  ...tableConfig.config,
+                  searchForm: searchForm as never
+                } as never
+              });
+            }
           }}
           submitter={{
             render: () => {
@@ -432,7 +480,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
               }
               return column;
             });
-            return it as {};
+            return it as never;
           })}/> : undefined}
         <ProTable<DataItem>
           actionRef={tableRef}
