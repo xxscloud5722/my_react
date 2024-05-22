@@ -28,7 +28,7 @@ export declare type TableAutoDataPanelProps = {
     importTaskList<T>(code: string, option: { signal: AbortSignal | undefined }): Promise<T>
     export<T>(code: string, exportCode: string, fileName: string, params: {}, option: { signal: AbortSignal | undefined }): Promise<T>
     importData<T>(code: string, importExcel: ImportData, option: { signal: AbortSignal | undefined }): Promise<T>
-    getDownloadUrl(value: string, fileName: string, option: { signal: AbortSignal | undefined }): Promise<string>
+    getDownloadUrl(value: string, fileName: string, option: { signal: AbortSignal | undefined }): Promise<string | undefined>
   }
 }
 export declare type DataItem = {
@@ -650,7 +650,11 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
                                   const fileName = item.fileName + '_' + (new Date().getTime()) + '.xlsx';
                                   props?.request?.getDownloadUrl(item.invalidDataUrl, fileName, { signal: abortController?.signal })
                                     .then(downloadUrl => {
+                                      if (downloadUrl === undefined) {
+                                        return messageApi.error('获取下载地址失败，请稍后重试。');
+                                      }
                                       ElementUtils.download(downloadUrl, encodeURIComponent(fileName));
+                                      return undefined;
                                     });
                                 }}>下载失败数据</a>
                               </div> : undefined}
@@ -699,7 +703,11 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
                                 const fileName = item.name + '_' + (new Date().getTime()) + '.xlsx';
                                 props?.request?.getDownloadUrl(item.url, fileName, { signal: abortController?.signal })
                                   .then(downloadUrl => {
+                                    if (downloadUrl === undefined) {
+                                      return messageApi.error('获取下载地址失败，请稍后重试。');
+                                    }
                                     ElementUtils.download(downloadUrl, encodeURIComponent(fileName));
+                                    return undefined;
                                   });
                               }}>下载文件</a> : undefined}
                             </div>
@@ -748,7 +756,11 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
             const fileName = (tableConfig.name || '') + '-模板文件.xlsx';
             props?.request?.getDownloadUrl(importConfig.url, fileName, { signal: abortController?.signal })
               .then(downloadUrl => {
+                if (downloadUrl === undefined) {
+                  return messageApi.error('获取下载地址失败，请稍后重试。');
+                }
                 ElementUtils.download(downloadUrl, encodeURIComponent(fileName));
+                return undefined;
               });
             return;
           }
