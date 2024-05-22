@@ -27,7 +27,8 @@ export declare type TableAutoDataPanelProps = {
     exportTaskList<T>(code: string, option: { signal: AbortSignal | undefined }): Promise<T>
     importTaskList<T>(code: string, option: { signal: AbortSignal | undefined }): Promise<T>
     export<T>(code: string, exportCode: string, fileName: string, params: {}, option: { signal: AbortSignal | undefined }): Promise<T>
-    importData<T>(code: string, importExcel: ImportData, option: { signal: AbortSignal | undefined }): Promise<T>;
+    importData<T>(code: string, importExcel: ImportData, option: { signal: AbortSignal | undefined }): Promise<T>
+    getDownloadUrl(value: string, fileName: string, option: { signal: AbortSignal | undefined }): Promise<string>
   }
 }
 export declare type DataItem = {
@@ -646,8 +647,11 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
                                   margin-top: 4px;
                               `}>
                                 <a onClick={() => {
-                                  const fileName = encodeURIComponent(item.fileName + '_' + (new Date().getTime()) + '.xlsx');
-                                  ElementUtils.download(item.invalidDataUrl + '?fileName=' + fileName, fileName);
+                                  const fileName = item.fileName + '_' + (new Date().getTime()) + '.xlsx';
+                                  props?.request?.getDownloadUrl(item.invalidDataUrl, fileName, { signal: abortController?.signal })
+                                    .then(downloadUrl => {
+                                      ElementUtils.download(downloadUrl, encodeURIComponent(fileName));
+                                    });
                                 }}>下载失败数据</a>
                               </div> : undefined}
                             </div>
@@ -692,8 +696,11 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
                                   font-size: 13px;
                                   margin-top: 4px;
                               `} onClick={() => {
-                                const fileName = encodeURIComponent(item.name + '_' + (new Date().getTime()) + '.xlsx');
-                                ElementUtils.download(item.url + '?fileName=' + fileName, fileName);
+                                const fileName = item.name + '_' + (new Date().getTime()) + '.xlsx';
+                                props?.request?.getDownloadUrl(item.url, fileName, { signal: abortController?.signal })
+                                  .then(downloadUrl => {
+                                    ElementUtils.download(downloadUrl, encodeURIComponent(fileName));
+                                  });
                               }}>下载文件</a> : undefined}
                             </div>
                           </div>
@@ -739,7 +746,10 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
           }
           if (importConfig.url !== undefined && importConfig.url !== '') {
             const fileName = (tableConfig.name || '') + '-模板文件.xlsx';
-            ElementUtils.download(importConfig.url + '?fileName=' + fileName, fileName);
+            props?.request?.getDownloadUrl(importConfig.url, fileName, { signal: abortController?.signal })
+              .then(downloadUrl => {
+                ElementUtils.download(downloadUrl, encodeURIComponent(fileName));
+              });
             return;
           }
           if (importConfig.message !== undefined && importConfig.message !== '') {
