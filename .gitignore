@@ -2,3 +2,5 @@ network/.idea/
 */dist/
 */node_modules/
 assembly/.idea/
+assembly/pnpm-lock.yaml
+network/pnpm-lock.yaml

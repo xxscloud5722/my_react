@@ -113,6 +113,33 @@ export default class Fetch {
   }
 
   /**
+   * 发送POST/FormData 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param formData Form参数.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async postFormData<T>(path: string, params?: any, formData?: FormData, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    const paramQuery = new URLSearchParams();
+    Object.keys(params || {})
+      .forEach(key => {
+        paramQuery.append(key, params[key]);
+      });
+
+    const response = await fetch(this.pathPrefix + path + (paramQuery.toString() === '' ? '' : '?') + paramQuery.toString(), {
+      method: 'POST',
+      headers: {
+        ...this.authorization(),
+        ...(header || {})
+      },
+      body: formData,
+      signal: option?.signal || null
+    });
+    return this.responseJson<T>(response);
+  }
+
+  /**
    * 发送Get 请求.
    * @param path 路径.
    * @param params 参数.
