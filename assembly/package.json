@@ -1,10 +1,11 @@
 {
   "name": "beer-assembly",
   "private": false,
-  "version": "1.1.1-alpha.19",
+  "version": "1.1.1-alpha.24",
   "type": "module",
   "scripts": {
-    "pub-w": "tsc && copy package.json .\\dist\\package.json && npm publish ./dist"
+    "pub-w": "tsc && copy package.json .\\dist\\package.json && npm publish ./dist",
+    "pub-m": "tsc && cp package.json ./dist/package.json && npm publish ./dist"
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
@@ -12,7 +13,7 @@
     "@emotion/css": "^11.11.2",
     "@uiw/react-codemirror": "^4.21.24",
     "antd": "^5.10.0",
-    "beer-network": "^1.1.1-alpha.9",
+    "beer-network": "^1.1.1-alpha.12",
     "history": "^5.3.0",
     "lodash": "^4.17.21",
     "react": "^18.2.0",

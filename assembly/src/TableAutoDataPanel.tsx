@@ -7,6 +7,7 @@ import ElementUtils from 'beer-network/elementUtils';
 import { css } from '@emotion/css';
 import { Config } from './config';
 import ImportModal, { ImportData } from './ImportModal';
+import NetDiskDirectory, { DirectorySelectProps } from './DirectorySelect';
 
 const G_VARIABLE = {
   searchFormParams: {} as any,
@@ -29,7 +30,9 @@ export declare type TableAutoDataPanelProps = {
     export<T>(code: string, exportCode: string, fileName: string, params: {}, option: { signal: AbortSignal | undefined }): Promise<T>
     importData<T>(code: string, importExcel: ImportData, option: { signal: AbortSignal | undefined }): Promise<T>
     getDownloadUrl(value: string, fileName: string, option: { signal: AbortSignal | undefined }): Promise<string | undefined>
+    saveExport(code: string, exportId: string, directoryId: string, option: { signal: AbortSignal | undefined }): Promise<boolean | undefined>
   }
+  directoryProps?: DirectorySelectProps | undefined,
 }
 export declare type DataItem = {
   id: string | undefined
@@ -124,6 +127,9 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
 
   const [isLoadingExport, setIsLoadingExport] = useState(false);
   const [exportList, setExportList] = useState([] as ExportItem[]);
+
+  const [exportItemId, setExportItemId] = useState('');
+  const [exportDirectoryModal, setExportDirectoryModal] = useState(false);
 
   const requestTable = async (params: {}) => {
     requestStatistics()
@@ -375,6 +381,18 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
   };
   const onSearch = async () => {
     formRef.current?.submit();
+  };
+  const onConfirmSaveExport = async (directoryId: string) => {
+    if (exportItemId === '') {
+      return false;
+    }
+    const result = await props?.request?.saveExport?.(code, exportItemId, directoryId, { signal: abortController?.signal });
+    if (result === true) {
+      await messageApi.success('提交任务成功！');
+    } else {
+      await messageApi.error('提交任务失败，请联系服务商');
+    }
+    return result || false;
   };
   useImperativeHandle(ref, () => ({
     refresh: () => {
@@ -696,20 +714,32 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
                                 font-size: 12px;
                             `}>导出时间：{item.createTime}</p>
                             <div>
-                              {item.status === 2 ? <a className={css`
+                              {item.status === 2 ? <Space size={6} className={css`
                                   font-size: 13px;
                                   margin-top: 4px;
-                              `} onClick={() => {
-                                const fileName = item.name + '_' + (new Date().getTime()) + '.xlsx';
-                                props?.request?.getDownloadUrl(item.url, fileName, { signal: abortController?.signal })
-                                  .then(downloadUrl => {
-                                    if (downloadUrl === undefined) {
-                                      return messageApi.error('获取下载地址失败，请稍后重试。');
-                                    }
-                                    ElementUtils.download(downloadUrl, encodeURIComponent(fileName));
-                                    return undefined;
-                                  });
-                              }}>下载文件</a> : undefined}
+                              `}>
+                                <a onClick={async () => {
+                                  setIsLoadingExport(true);
+                                  const fileName = item.name + '_' + (new Date().getTime()) + '.xlsx';
+                                  props?.request?.getDownloadUrl(item.url, fileName, { signal: abortController?.signal })
+                                    .then(it => {
+                                      setIsLoadingExport(false);
+                                      return it;
+                                    })
+                                    .then(downloadUrl => {
+                                      if (downloadUrl === undefined) {
+                                        return messageApi.error('获取下载地址失败，请稍后重试。');
+                                      }
+                                      ElementUtils.download(downloadUrl, encodeURIComponent(fileName));
+                                      return undefined;
+                                    });
+                                }}>下载文件</a>
+                                <Divider type="vertical" style={{ background: '#eee' }}/>
+                                <a onClick={() => {
+                                  setExportItemId(item.id);
+                                  setExportDirectoryModal(true);
+                                }}>保存到网盘</a>
+                              </Space> : undefined}
                             </div>
                           </div>
                         </div>
@@ -799,6 +829,16 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
           </Space>
         </Radio.Group>
       </Modal>
+      <NetDiskDirectory
+        {...(props?.directoryProps || {})}
+        open={exportDirectoryModal}
+        onOk={async (directoryId) => {
+          const result = await onConfirmSaveExport(directoryId);
+          if (result) {
+            setExportDirectoryModal(false);
+          }
+        }}
+        onCancel={() => setExportDirectoryModal(false)}/>
     </>
   );
 });

@@ -1,11 +1,13 @@
 export default class ElementUtils {
   /**
    * 选择文件本地文件.
+   * @param multiple 是否多选.
    */
-  public static selectFile(): Promise<FileList | null> {
+  public static selectFile(multiple?: boolean | undefined): Promise<FileList | null> {
     return new Promise<FileList | null>((resolve) => {
       const fileInput = document.createElement('input');
       fileInput.type = 'file';
+      fileInput.multiple = multiple || false;
       fileInput.style.display = 'none';
       document.body.appendChild(fileInput);
       fileInput.addEventListener('change', () => {
