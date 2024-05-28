@@ -384,7 +384,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
   };
   const onConfirmSaveExport = async (directoryId: string) => {
     if (exportItemId === '') {
-      return false;
+      return;
     }
     const result = await props?.request?.saveExport?.(code, exportItemId, directoryId, { signal: abortController?.signal });
     if (result === true) {
@@ -392,7 +392,6 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
     } else {
       await messageApi.error('提交任务失败，请联系服务商');
     }
-    return result || false;
   };
   useImperativeHandle(ref, () => ({
     refresh: () => {
@@ -833,10 +832,9 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
         {...(props?.directoryProps || {})}
         open={exportDirectoryModal}
         onOk={async (directoryId) => {
-          const result = await onConfirmSaveExport(directoryId);
-          if (result) {
-            setExportDirectoryModal(false);
-          }
+          onConfirmSaveExport(directoryId)
+            .then();
+          setExportDirectoryModal(false);
         }}
         onCancel={() => setExportDirectoryModal(false)}/>
     </>
