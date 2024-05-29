@@ -44,6 +44,7 @@ export declare type FileItemTableProps = {
 const Component: FC<FileItemTableProps> = (props) => {
   const tableRef = useRef<ActionType>();
   const [loading, setLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
   const [directoryName, setDirectoryName] = useState('');
   const [newName, setNewName] = useState('');
   const [directoryModal, setDirectoryModal] = useState(false);
@@ -161,34 +162,41 @@ const Component: FC<FileItemTableProps> = (props) => {
     };
   };
   const onUploadFile = async () => {
-    const files = await ElementUtils.selectFile();
+    const files = await ElementUtils.selectFile(true);
     if (files === null) {
       return;
     }
-    const file = files[0];
-    if (props?.uploadFormat !== undefined) {
-      const fileName = file.name;
-      const fileExtension = fileName.split('.')
-        ?.pop()
-        ?.toLowerCase() || '';
-      if (!props.uploadFormat?.includes(fileExtension)) {
-        message.error(props?.uploadFormatMessage || '抱歉，文件格式不受支持');
-        return;
+    setUploadLoading(true);
+    try {
+      for (const file of files) {
+        if (props?.uploadFormat !== undefined) {
+          const fileName = file.name;
+          const fileExtension = fileName.split('.')
+            ?.pop()
+            ?.toLowerCase() || '';
+          if (!props.uploadFormat?.includes(fileExtension)) {
+            message.error(props?.uploadFormatMessage || `抱歉，文件${file.name}格式不受支持`);
+            continue;
+          }
+        }
+        // 文件大小限制
+        const limitSize = (props?.uploadSize || 15);
+        if (file.size > limitSize * 1024 * 1024) {
+          message.error(`抱歉，文件大小超过了限制，请上传小于${limitSize}Mb 的文件`);
+          continue;
+        }
+        message.info(`准备上传文件：${file.name}`);
+        setLoading(true);
+        // eslint-disable-next-line no-await-in-loop
+        const result = await props?.request?.uploadFile?.(rootPaths[rootPaths.length - 1]?.id || '', files);
+        setLoading(false);
+        if (result !== undefined && result) {
+          message.success('您已成功上传文件！');
+          tableRef?.current?.reload();
+        }
       }
-    }
-
-    // 文件大小限制
-    const limitSize = (props?.uploadSize || 15);
-    if (file.size > limitSize * 1024 * 1024) {
-      message.error('抱歉，文件大小超过了限制，请上传小于 ' + limitSize + 'Mb 的文件');
-      return;
-    }
-    setLoading(true);
-    const result = await props?.request?.uploadFile?.(rootPaths[rootPaths.length - 1]?.id || '', files);
-    setLoading(false);
-    if (result !== undefined && result) {
-      message.success('您已成功上传文件！');
-      tableRef?.current?.reload();
+    } finally {
+      setUploadLoading(false);
     }
   };
   const onSwitchPath = async (_id: string, index: number) => {
@@ -394,7 +402,7 @@ const Component: FC<FileItemTableProps> = (props) => {
                 <Button type="dashed" onClick={() => setDirectoryName('')}>新建目录</Button>
               </Popconfirm>
               <Divider type="vertical" style={{ background: '#ccc' }}></Divider>
-              <Button type="primary" onClick={onUploadFile}>上传文件</Button>
+              <Button type="primary" onClick={onUploadFile} loading={uploadLoading}>上传文件</Button>
             </Space>
           </>]}
         />
