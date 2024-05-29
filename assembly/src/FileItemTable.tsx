@@ -29,7 +29,7 @@ export declare type RootPath = {
 export declare type FileItemTableProps = {
   request?: {
     getItems?: (params?: { parentId: string } | undefined) => Promise<FileItem[]>
-    uploadFile?: (parentId: string, file: FileList) => Promise<boolean>
+    uploadFile?: (parentId: string, file: File) => Promise<boolean>
     getFileLink?: (fileId: string) => Promise<string | undefined>
     createDirectory?: (parentId: string, name: string) => Promise<boolean>
     rename?: (fileId: string, name: string) => Promise<boolean>
@@ -188,7 +188,7 @@ const Component: FC<FileItemTableProps> = (props) => {
         message.info(`准备上传文件：${file.name}`);
         setLoading(true);
         // eslint-disable-next-line no-await-in-loop
-        const result = await props?.request?.uploadFile?.(rootPaths[rootPaths.length - 1]?.id || '', files);
+        const result = await props?.request?.uploadFile?.(rootPaths[rootPaths.length - 1]?.id || '', file);
         setLoading(false);
         if (result !== undefined && result) {
           message.success('您已成功上传文件！');
