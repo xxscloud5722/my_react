@@ -40,22 +40,14 @@ export default class Fetch {
     this.pathPrefix = pathPrefix;
   }
 
-  /**
-   * 发送POST/JSON 请求.
-   * @param path 路径.
-   * @param params 参数.
-   * @param body 内容体.
-   * @param header 头部.
-   * @param option 选项.
-   */
-  async post<T>(path: string, params?: any, body?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+  private async sendBody<T>(method: string, path: string, params?: any, body?: any, header?: any, option?: Option) {
     const paramQuery = new URLSearchParams();
     Object.keys(params || {})
       .forEach(key => {
         paramQuery.append(key, params[key]);
       });
     const response = await fetch(this.pathPrefix + path + (paramQuery.toString() === '' ? '' : '?') + paramQuery.toString(), {
-      method: 'POST',
+      method,
       headers: {
         ...this.authorization(),
         ...(header || {}),
@@ -67,15 +59,7 @@ export default class Fetch {
     return this.responseJson<T>(response);
   }
 
-  /**
-   * 发送POST/Form 请求.
-   * @param path 路径.
-   * @param params 参数.
-   * @param form Form参数.
-   * @param header 头部.
-   * @param option 选项.
-   */
-  async postForm<T>(path: string, params?: any, form?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+  private async sendForm<T>(method: string, path: string, params?: any, form?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
     const paramQuery = new URLSearchParams();
     Object.keys(params || {})
       .forEach(key => {
@@ -100,7 +84,7 @@ export default class Fetch {
     appendFormData(form);
 
     const response = await fetch(this.pathPrefix + path + (paramQuery.toString() === '' ? '' : '?') + paramQuery.toString(), {
-      method: 'POST',
+      method,
       headers: {
         ...this.authorization(),
         ...(header || {}),
@@ -112,15 +96,7 @@ export default class Fetch {
     return this.responseJson<T>(response);
   }
 
-  /**
-   * 发送POST/FormData 请求.
-   * @param path 路径.
-   * @param params 参数.
-   * @param formData Form参数.
-   * @param header 头部.
-   * @param option 选项.
-   */
-  async postFormData<T>(path: string, params?: any, formData?: FormData, header?: any, option?: Option): Promise<JsonResponse<T>> {
+  private async sendFormData<T>(method: string, path: string, params?: any, formData?: FormData, header?: any, option?: Option): Promise<JsonResponse<T>> {
     const paramQuery = new URLSearchParams();
     Object.keys(params || {})
       .forEach(key => {
@@ -128,7 +104,7 @@ export default class Fetch {
       });
 
     const response = await fetch(this.pathPrefix + path + (paramQuery.toString() === '' ? '' : '?') + paramQuery.toString(), {
-      method: 'POST',
+      method,
       headers: {
         ...this.authorization(),
         ...(header || {})
@@ -139,6 +115,164 @@ export default class Fetch {
     return this.responseJson<T>(response);
   }
 
+  private async send<T>(method: string, path: string, params?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    const paramQuery = new URLSearchParams();
+    Object.keys(params || {})
+      .forEach(key => {
+        paramQuery.append(key, params[key]);
+      });
+    const response = await fetch(this.pathPrefix + path + '?' + paramQuery.toString(), {
+      method,
+      headers: {
+        ...this.authorization(),
+        ...(header || {})
+      },
+      signal: option?.signal || null
+    });
+    return this.responseJson<T>(response);
+  }
+
+  /**
+   * 发送POST 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async post<T>(path: string, params?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.send('POST', path, params, header, option);
+  }
+
+  /**
+   * 发送POST/JSON 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param body 内容体.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async postBody<T>(path: string, params?: any, body?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.sendBody('POST', path, params, body, header, option);
+  }
+
+  /**
+   * 发送POST/Form 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param form Form参数.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async postForm<T>(path: string, params?: any, form?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.sendForm('POST', path, params, form, header, option);
+  }
+
+  /**
+   * 发送POST/FormData 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param formData Form参数.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async postFormData<T>(path: string, params?: any, formData?: FormData, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.sendFormData('POST', path, params, formData, header, option);
+  }
+
+  /**
+   * 发送PUT 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async put<T>(path: string, params?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.send('PUT', path, params, header, option);
+  }
+
+  /**
+   * 发送PUT/JSON 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param body 内容体.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async putBody<T>(path: string, params?: any, body?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.sendBody('PUT', path, params, body, header, option);
+  }
+
+  /**
+   * 发送PUT/Form 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param form Form参数.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async putForm<T>(path: string, params?: any, form?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.sendForm('PUT', path, params, form, header, option);
+  }
+
+  /**
+   * 发送PUT/FormData 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param formData Form参数.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async putFormData<T>(path: string, params?: any, formData?: FormData, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.sendFormData('PUT', path, params, formData, header, option);
+  }
+
+  /**
+   * 发送DELETE 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async delete<T>(path: string, params?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.send('DELETE', path, params, header, option);
+  }
+
+  /**
+   * 发送DELETE/JSON 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param body 内容体.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async deleteBody<T>(path: string, params?: any, body?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.sendBody('DELETE', path, params, body, header, option);
+  }
+
+  /**
+   * 发送DELETE/Form 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param form Form参数.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async deleteForm<T>(path: string, params?: any, form?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.sendForm('DELETE', path, params, form, header, option);
+  }
+
+  /**
+   * 发送DELETE/FormData 请求.
+   * @param path 路径.
+   * @param params 参数.
+   * @param formData Form参数.
+   * @param header 头部.
+   * @param option 选项.
+   */
+  async deleteFormData<T>(path: string, params?: any, formData?: FormData, header?: any, option?: Option): Promise<JsonResponse<T>> {
+    return this.sendFormData('DELETE', path, params, formData, header, option);
+  }
+
   /**
    * 发送Get 请求.
    * @param path 路径.
@@ -147,20 +281,7 @@ export default class Fetch {
    * @param option 选项.
    */
   async get<T>(path: string, params?: any, header?: any, option?: Option): Promise<JsonResponse<T>> {
-    const paramQuery = new URLSearchParams();
-    Object.keys(params || {})
-      .forEach(key => {
-        paramQuery.append(key, params[key]);
-      });
-    const response = await fetch(this.pathPrefix + path + '?' + paramQuery.toString(), {
-      method: 'GET',
-      headers: {
-        ...this.authorization(),
-        ...(header || {})
-      },
-      signal: option?.signal || null
-    });
-    return this.responseJson<T>(response);
+    return this.send('GET', path, params, header, option);
   }
 
   /**
