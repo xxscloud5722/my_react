@@ -49,6 +49,21 @@ export default class ObjectUtils {
   }
 
   /**
+   * 转成扁平化参数.
+   */
+  public static flattenObject(data: any, parentKey = '', result: any = {}) {
+    _.forEach(data, (value, key) => {
+      const newKey = parentKey ? `${parentKey}.${key}` : key;
+      if (_.isObject(value) && !_.isArray(value)) {
+        this.flattenObject(value, newKey, result);
+      } else {
+        result[newKey] = value;
+      }
+    });
+    return result;
+  }
+
+  /**
    * 解析表单数据.
    * @param data 表单数据.
    * @param offset 时间是否偏移 (单位: 天).
