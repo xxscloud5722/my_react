@@ -1,13 +1,13 @@
-import React, { forwardRef, ReactNode, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Alert, Badge, Button, Divider, Drawer, Flex, Input, List, message, Modal, Radio, Space, Spin, Tabs, theme } from 'antd';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Badge, Button, Divider, Drawer, Flex, Input, List, message, Modal, Radio, Space, Spin, Tabs, theme } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import { ActionType, BetaSchemaForm, ProTable } from '@ant-design/pro-components';
 import { FormInstance } from 'antd/lib';
 import ElementUtils from 'beer-network/elementUtils';
 import { css } from '@emotion/css';
-import { Config } from './config';
 import ImportModal, { ImportData } from './ImportModal';
 import NetDiskDirectory, { DirectorySelectProps } from './DirectorySelect';
+import { Config } from './config';
 
 const G_VARIABLE = {
   searchFormParams: {} as any,
@@ -28,10 +28,11 @@ export declare type TableAutoDataPanelProps = {
     exportTaskList<T>(code: string, option: { signal: AbortSignal | undefined }): Promise<T>
     importTaskList<T>(code: string, option: { signal: AbortSignal | undefined }): Promise<T>
     export<T>(code: string, exportCode: string, fileName: string, params: {}, option: { signal: AbortSignal | undefined }): Promise<T>
-    importData<T>(code: string, importExcel: ImportData, option: { signal: AbortSignal | undefined }): Promise<T>
+    importData<T>(code: string, importCode: string, importExcel: ImportData, option: { signal: AbortSignal | undefined }): Promise<T>
     getDownloadUrl(value: string, fileName: string, option: { signal: AbortSignal | undefined }): Promise<string | undefined>
     saveExport(code: string, exportId: string, directoryId: string, option: { signal: AbortSignal | undefined }): Promise<boolean | undefined>
   }
+  onLoad?: (config: TableConfig) => void | undefined
   directoryProps?: DirectorySelectProps | undefined,
 }
 export declare type DataItem = {
@@ -41,30 +42,49 @@ export declare type DataItem = {
   description: string
 };
 export declare type TableConfig = {
+  // 代码
+  code: string
+  // 名称
   name: string
-  config: {
-    search: boolean,
-    authLoad: boolean,
-    message: string,
-    enableSearchForm: boolean,
-    searchForm: {
-      columns: {
-        title?: string | ReactNode | undefined,
-        enableTitleNode?: boolean | undefined,
-        key: string,
-        valueType: string,
-        valueCode: string,
-        valueEnum: {},
-        listening: string | undefined
-      }[]
-    }[],
-    modules: string[]
-    exportConfig: { code: string, label: string }[],
-    importConfig: { url: string | undefined, message: string | undefined } | undefined,
-    statistics: { loading: string, code: string } | undefined
-    groups: { key: string, label: string }[]
-  } | undefined
-  columns: { title: string, dataIndex: string, hideInSearch: boolean, hideInTable: boolean, tooltip: string, width: string, groupId: string | undefined }[]
+  // 拥有的功能
+  modules: string[]
+  // 搜索表单
+  searchForm?: {
+    dataIndex: string
+    key: string
+    title: string
+    // 控件类型
+    valueType: string
+    width: string | number
+    // SELECT 远程加载数据的代码
+    valueCode: string
+    // SELECT 的选择枚举 或者 数组（会将数组转成对象）
+    valueEnum: { label: string, value: string } | []
+    // 只有SELECT 生效, 判断是否监听另外一个
+    listening: string
+  }[]
+  // 搜索配置
+  searchConfig?: { code: string }
+  // 导出配置
+  exportConfig?: { code: string, label: string }[]
+  // 导入配置
+  importConfig?: {
+    // 导入代码
+    code: string,
+    // 下载地址
+    url: string,
+    // 模板名称
+    name: string,
+    // 如果没有下载地址则弹出消息
+    message: string
+  }
+  // 列
+  columns?: { key: string, name: string, columns: { dataIndex: string, title: string, width: string | number, renderContent: string }[] }[]
+  // 列表统计
+  statistics?: { code: string, loading: string }
+
+  // 自定义表单
+  aForm: any
 }
 export declare type ExportItem = {
   id: string
@@ -131,6 +151,14 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
   const [exportItemId, setExportItemId] = useState('');
   const [exportDirectoryModal, setExportDirectoryModal] = useState(false);
 
+  const createFrom = (searchForm: any) => {
+    return [{
+      key: '_' + new Date().getTime(),
+      title: '',
+      columns: searchForm,
+      valueType: 'group'
+    }];
+  };
   const requestTable = async (params: {}) => {
     requestStatistics()
       .then();
@@ -138,12 +166,12 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
     const requestParams = {
       ...params,
       ...G_VARIABLE.formParams(),
-      tableGroupCode: tableConfig.config?.groups !== undefined ? tableGroupActive : undefined,
+      tableGroupCode: (tableConfig?.columns || []).length > 1 ? tableGroupActive : undefined,
       current: undefined,
       pageSize: undefined
     } as any;
     setSearchParams({ ...requestParams });
-    return props.request.search<any>(code, {
+    return props.request.search<any>(tableConfig?.searchConfig?.code || code, {
       ...params,
       params: requestParams
     }, { signal: abortController?.signal })
@@ -153,11 +181,12 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
       })
       .catch(async message => {
         setSearchIsLoading(false);
-        await messageApi.error(message);
+        messageApi.error(message)
+          .then();
       });
   };
   const requestStatistics = async () => {
-    if (tableConfig.config?.statistics?.code === undefined || tableConfig.config?.statistics?.code === '') {
+    if (tableConfig?.statistics?.code === undefined || tableConfig?.statistics?.code === '') {
       return;
     }
     setStatistics({ status: '' });
@@ -165,7 +194,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
       success: boolean,
       message: string,
       data: { status: never, message: string, detail: string }
-    }>(tableConfig.config?.statistics?.code || '', {}, { signal: abortController?.signal });
+    }>(tableConfig?.statistics?.code || '', {}, { signal: abortController?.signal });
     if (result.success) {
       setStatistics({
         ...statistics,
@@ -195,10 +224,15 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
     return props.request.config<{ success: boolean, message: string, data: TableConfig }>(code, { signal: abortController?.signal })
       .then(async result => {
         if (result.success) {
-          if ((result.data.config?.searchForm || []).length > 0) {
-            const columns = result.data.config?.searchForm[0].columns || [];
-            for (const it of columns) {
-              if (it.valueType === 'select' && it.valueCode !== undefined && it.valueCode !== '') {
+          if ((result.data?.searchForm || []).length > 0) {
+            const searchFormItems = result.data?.searchForm || [];
+            for (const it of searchFormItems) {
+              // 设置控件key
+              if (it.key.indexOf('---') < 0) {
+                it.key = new Date().getTime() + '---' + it.key;
+              }
+              // 是否加载远程下拉选数据
+              if ((it.valueType?.toUpperCase() || '') === 'SELECT' && it.valueCode !== undefined && it.valueCode !== '') {
                 const selectItem: any = {};
                 (await requestSelectValue(it.valueCode)).forEach(it => {
                   selectItem[it.value] = {
@@ -207,8 +241,21 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
                   };
                 });
                 it.valueEnum = selectItem;
+                continue;
+              }
+              // 是否将下拉选数组转成顺序对象
+              if ((it.valueType?.toUpperCase() || '') === 'SELECT' && Array.isArray(it.valueEnum)) {
+                const selectItems: any = {};
+                it.valueEnum.forEach((p: any, i: number) => {
+                  selectItems['#' + i + '_' + p.value] = {
+                    text: p.label,
+                    status: p.value
+                  };
+                });
+                it.valueEnum = selectItems;
               }
             }
+            result.data.aForm = createFrom(searchFormItems);
           }
 
           G_VARIABLE.reset();
@@ -216,6 +263,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
           setTabsActive('00');
           setTableConfig(result.data);
           rendering(result.data);
+          props?.onLoad?.(result.data);
         } else {
           messageApi.error(result.message);
         }
@@ -224,7 +272,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
   };
   const parseFormValue = (value: any) => {
     const params: any = { ...value };
-    const formItems = tableConfig.config?.searchForm[0]?.columns;
+    const formItems = tableConfig?.searchForm;
     for (const key of Object.keys(params)) {
       const keyId = key.split('---')[1];
       const value = params[key];
@@ -232,7 +280,19 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
       if (formItem === undefined) {
         continue;
       }
-      if ((formItem.valueType || '').indexOf('date') <= -1) {
+      // 下拉选
+      if ((formItem.valueType || '').toLowerCase()
+        .indexOf('SELECT') > -1) {
+        const string = value.toString();
+        const index = string.indexOf('_');
+        if (index > -1) {
+          params[key] = string.substring(index + 1);
+        }
+        continue;
+      }
+      // 时间
+      if ((formItem.valueType || '').toUpperCase()
+        .indexOf('DATE') <= -1) {
         continue;
       }
       if (Array.isArray(value) && value.length > 0) {
@@ -264,8 +324,8 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
     return result;
   };
   const rendering = (tableConfig: TableConfig) => {
-    if (tableConfig.config?.groups !== undefined) {
-      const key = tableConfig.config?.groups[0].key;
+    if ((tableConfig?.columns || []).length > 1) {
+      const key = tableConfig?.columns?.[0]?.key || '';
       setTableGroupActive(key);
     }
   };
@@ -295,9 +355,9 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
   const onOpenHistoryList = async () => {
     setIsOpenHistoryModal(true);
     if (tabsActive === '00') {
-      if ((tableConfig.config?.modules || []).indexOf('IMPORT') > -1) {
+      if ((tableConfig?.modules || []).indexOf('IMPORT') > -1) {
         setTabsActive('IMPORT');
-      } else if ((tableConfig.config?.modules || []).indexOf('EXPORT') > -1) {
+      } else if ((tableConfig?.modules || []).indexOf('EXPORT') > -1) {
         setTabsActive('EXPORT');
       }
     } else {
@@ -310,6 +370,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
   const onConfirmImport = async (excelData: ImportData) => {
     return props.request.importData<{ success: boolean, data: boolean, message: string }>(
       code,
+      tableConfig?.importConfig?.code || code,
       excelData,
       { signal: abortController?.signal }
     );
@@ -323,7 +384,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
       });
       return;
     }
-    const exportConfig = tableConfig.config?.exportConfig;
+    const exportConfig = tableConfig?.exportConfig;
     if (exportConfig === undefined) {
       Modal.confirm({
         title: '系统提示',
@@ -340,10 +401,10 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
       });
       return;
     }
-    if (tableConfig.config?.exportConfig?.length === 1) {
+    if (exportConfig.length === 1) {
       Modal.confirm({
         title: '系统提示',
-        content: <>将导出<span style={{ fontWeight: 500 }}>《{tableConfig.config.exportConfig[0].label}》</span>数据，导出时间较长请耐心等待</>,
+        content: <>将导出<span style={{ fontWeight: 500 }}>《{exportConfig[0].label}》</span>数据，导出时间较长请耐心等待</>,
         okText: '确定',
         cancelText: '取消',
         onOk: () => {
@@ -423,10 +484,8 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
   return (
     <>
       {contextHolder}
-      {tableConfig.config === undefined ? undefined : <>
-        {tableConfig.config?.message !== undefined && tableConfig.config?.message !== ''
-          ? <Alert style={{ marginBottom: '15px' }} message={tableConfig.config?.message} type="info" showIcon/> : undefined}
-        {tableConfig.config?.enableSearchForm === true ? <BetaSchemaForm<DataItem>
+      {tableConfig?.code === undefined ? undefined : <>
+        {tableConfig?.searchForm !== undefined ? <BetaSchemaForm<DataItem>
           layoutType="Form"
           formRef={formRef}
           style={{
@@ -443,15 +502,9 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
           }}
           onValuesChange={async (formParams) => {
             const params = parseFormValue(formParams);
-            const searchForm = tableConfig.config?.searchForm?.map(it => {
-              return {
-                ...it,
-                key: '_' + (new Date().getTime())
-              };
-            });
-            const formItems = searchForm?.[0]?.columns;
+            const searchForm = tableConfig?.searchForm;
             const keys = Object.keys(params);
-            const listeningFormItems = formItems?.filter(it => it.listening !== undefined && it.listening !== ''
+            const listeningFormItems = searchForm?.filter(it => it.listening !== undefined && it.listening !== ''
               && it.valueCode !== undefined && it.valueCode !== '' && keys.indexOf(it.listening) > -1);
             if (listeningFormItems !== undefined && listeningFormItems.length > 0) {
               for (const formItem of listeningFormItems) {
@@ -463,13 +516,12 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
                   };
                 });
                 formItem.valueEnum = selectItem;
+                formItem.key = new Date().getTime() + '---' + formItem.key.split('---')[1];
               }
               setTableConfig({
                 ...tableConfig,
-                config: {
-                  ...tableConfig.config,
-                  searchForm: searchForm as never
-                } as never
+                searchForm: searchForm as never,
+                aForm: createFrom(searchForm)
               });
             }
           }}
@@ -485,55 +537,41 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
               </Flex>;
             }
           }}
-          columns={(tableConfig.config?.searchForm || []).map(it => {
-            it.columns = it.columns.map(column => {
-              if (column.enableTitleNode) {
-                column.title = React.createElement('div', {
-                  dangerouslySetInnerHTML: { __html: column.title }
-                });
-              }
-              // 避免控件没有被清理
-              if (column.key.indexOf('---') <= -1) {
-                column.key = (new Date().getTime()) + '---' + column.key;
-              }
-              return column;
-            });
-            return it as never;
-          })}/> : undefined}
+          columns={tableConfig.aForm}/> : undefined}
         <ProTable<DataItem>
           actionRef={tableRef}
-          columns={(tableConfig.columns as any[]).filter(it => {
-            return it.groupId === undefined || it.groupId === tableGroupActive;
+          columns={tableConfig?.columns?.filter(it => {
+            if (tableConfig.columns?.length === 1) {
+              return true;
+            }
+            return it.key === tableGroupActive;
           })
-            .map(it => {
-              if (it.renderContent !== undefined) {
-                return {
-                  ...it,
-                  render: (value: never, record: {}, _index: any) => {
-                    let element = it.renderContent.replace('#{value}', value);
-                    for (const key of Object.keys(record)) {
-                      element = element.replace(`#{${key}}`, (record as any)[key]);
+            .map(a => {
+              return a.columns.map(it => {
+                if (it.renderContent !== undefined) {
+                  return {
+                    ...it,
+                    render: (value: never, record: {}, _index: any) => {
+                      let element = it.renderContent.replace('#{value}', value);
+                      for (const key of Object.keys(record)) {
+                        element = element.replace(`#{${key}}`, (record as any)[key]);
+                      }
+                      return React.createElement('div', {
+                        dangerouslySetInnerHTML: { __html: element }
+                      });
                     }
-                    return React.createElement('div', {
-                      dangerouslySetInnerHTML: { __html: element }
-                    });
-                  }
-                };
-              }
-              return it as {};
-            })}
+                  };
+                }
+                return it;
+              });
+            })?.[0] as never}
           scroll={{ x: 'max-content' }}
           request={requestTable}
           size="small"
           rowKey="id"
-          search={tableConfig.config?.search ? {
-            layout: 'vertical',
-            defaultCollapsed: false,
-            searchGutter: 10,
-            className: 'table-search'
-          } : false}
+          search={false}
           options={false}
-          headerTitle={<>{tableConfig?.config?.statistics ? <div className={css`
+          headerTitle={<>{tableConfig?.statistics ? <div className={css`
               font-size: 14px;
               font-weight: normal;
               display: flex;
@@ -542,7 +580,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
           `}>
             {statistics?.status === undefined || statistics?.status === '' ? <>
               <Spin style={{ marginRight: 8 }} indicator={<LoadingOutlined style={{ fontSize: 14 }} spin/>}/>
-              {tableConfig?.config?.statistics?.loading}
+              {tableConfig?.statistics?.loading}
             </> : undefined}
             {statistics?.status === 'SUCCESS' ? <>
               <Badge style={{
@@ -566,15 +604,15 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
                 });
               }}>查看详情</a> : undefined}
             </> : undefined}
-          </div> : undefined}{(tableConfig?.config?.groups || []).length > 0 ? <Radio.Group buttonStyle="solid" value={tableGroupActive} className={css`
+          </div> : undefined}{(tableConfig?.columns || []).length > 1 ? <Radio.Group buttonStyle="solid" value={tableGroupActive} className={css`
               label {
                   font-weight: normal;
               }
           `} onChange={(e) => {
             setTableGroupActive(e.target.value);
           }} disabled={searchIsLoading}>
-            {(tableConfig?.config?.groups || []).map(it => (
-              <Radio.Button value={it.key} key={it.key}>{it.label}</Radio.Button>
+            {(tableConfig?.columns || []).map(it => (
+              <Radio.Button value={it.key} key={it.key}>{it.name}</Radio.Button>
             ))}
           </Radio.Group> : undefined}
           </>}
@@ -584,15 +622,15 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
           }}
           toolBarRender={() => [
             <>
-              {(tableConfig.config?.modules || []).indexOf('IMPORT') > -1 ? <Button type="primary" onClick={onImport}>
+              {(tableConfig?.modules || []).indexOf('IMPORT') > -1 ? <Button type="primary" onClick={onImport}>
                 导入数据
               </Button> : undefined}
-              {((tableConfig.config?.modules || []).indexOf('IMPORT') > -1 && (tableConfig.config?.modules || []).indexOf('EXPORT') > -1)
+              {((tableConfig?.modules || []).indexOf('IMPORT') > -1 && (tableConfig?.modules || []).indexOf('EXPORT') > -1)
                 ? <Divider type="vertical" style={{ background: '#bbb' }}/> : undefined}
-              {(tableConfig.config?.modules || []).indexOf('EXPORT') > -1 ? <Button type="primary" onClick={onExport}>
+              {(tableConfig?.modules || []).indexOf('EXPORT') > -1 ? <Button type="primary" onClick={onExport}>
                 导出表格
               </Button> : undefined}
-              {((tableConfig.config?.modules || []).indexOf('IMPORT') > -1 || (tableConfig.config?.modules || []).indexOf('EXPORT') > -1)
+              {((tableConfig?.modules || []).indexOf('IMPORT') > -1 || (tableConfig?.modules || []).indexOf('EXPORT') > -1)
                 ? <>
                   <Divider type="vertical" style={{ background: '#bbb' }}/>
                   <Button onClick={() => onOpenHistoryList()}>历史记录</Button>
@@ -747,8 +785,8 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
                   </List>
                 </Spin>
               }
-            ].filter(it => (it.key === 'IMPORT' && (tableConfig.config?.modules || []).indexOf('IMPORT') > -1) || (
-              it.key === 'EXPORT' && (tableConfig.config?.modules || []).indexOf('EXPORT') > -1))
+            ].filter(it => (it.key === 'IMPORT' && (tableConfig?.modules || []).indexOf('IMPORT') > -1) || (
+              it.key === 'EXPORT' && (tableConfig?.modules || []).indexOf('EXPORT') > -1))
           }
           activeKey={tabsActive}
           onChange={(e) => setTabsActive(e as never)}
@@ -776,13 +814,13 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
         onCancel={async () => setIsOpenImportModal(false)}
         request={async (importData) => onConfirmImport(importData)}
         onDownloadTemplate={async () => {
-          const importConfig = tableConfig.config?.importConfig;
+          const importConfig = tableConfig?.importConfig;
           if (importConfig === undefined) {
             await messageApi.info('暂无模板数据，请联系管理员添加');
             return;
           }
           if (importConfig.url !== undefined && importConfig.url !== '') {
-            const fileName = (tableConfig.name || '') + '-模板文件.xlsx';
+            const fileName = (importConfig.name || '') + '-模板文件.xlsx';
             props?.request?.getDownloadUrl(importConfig.url, fileName, { signal: abortController?.signal })
               .then(downloadUrl => {
                 if (downloadUrl === undefined) {
@@ -822,7 +860,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
           });
         }} value={exportFile.active}>
           <Space direction="vertical">
-            {tableConfig?.config?.exportConfig?.map(item => (
+            {tableConfig?.exportConfig?.map(item => (
               <Radio key={item.code} value={item.code}>{item.label}</Radio>
             ))}
           </Space>

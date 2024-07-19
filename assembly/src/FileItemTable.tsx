@@ -4,12 +4,12 @@ import { App, Button, ConfigProvider, Divider, Input, message, Popconfirm, Space
 import { css } from '@emotion/css';
 import { QuestionCircleOutlined } from '@ant-design/icons';
 import ElementUtils from 'beer-network/elementUtils';
-import { Config } from '@/config';
+import { Config } from './config';
 import NetDiskDirectory, { DirectorySelectProps } from './DirectorySelect';
 import FileNavigation from './FileNavigation';
 import MIME from './mime';
-// eslint-disable-next-line max-len
-const IconDirectory = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyOCIgaGVpZ2h0PSIyMyIgZmlsbD0ibm9uZSIgdmlld0JveD0iMCAwIDI4IDIzIiB4PSIxNTAiIHk9IjEzMCIKICAgICBkYXRhLW5hbWU9InNwYWNlYXJlYSIgZGF0YS1zdmctaWQ9ImVhMzFiMWYxMDAiPgogICAgPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiCiAgICAgICAgICBkPSJNMi4yNSAyMi41QTIuMjUgMi4yNSAwIDAgMSAwIDIwLjI1VjIuNTgzQTIuMjUgMi4yNSAwIDAgMSAyLjI1LjMzM2g3LjA4M2wyLjMzNCAyLjMzNEgyNS43NUEyLjI1IDIuMjUgMCAwIDEgMjggNC45MTdWMjAuMjVhMi4yNSAyLjI1IDAgMCAxLTIuMjUgMi4yNUgyLjI1eiIKICAgICAgICAgIGZpbGw9InVybCgjZykiLz4KICAgIDxkZWZzPgogICAgICAgIDxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9Ii0xMy45MTciIHkxPSIxMS4zNTEiIHgyPSI3LjUzIiB5Mj0iMzguNDQzIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CiAgICAgICAgICAgIDxzdG9wIHN0b3AtY29sb3I9IiM2QkJFRkUiLz4KICAgICAgICAgICAgPHN0b3Agb2Zmc2V0PSIuOTk5IiBzdG9wLWNvbG9yPSIjNTlBQkZFIi8+CiAgICAgICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDwvZGVmcz4KPC9zdmc+Cg==';
+import IconDirectory from './icon/directory.svg';
+
 const { Text } = Typography;
 
 export declare type FileItem = {

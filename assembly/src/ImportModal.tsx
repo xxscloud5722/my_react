@@ -12,12 +12,13 @@ export declare type ImportFileStatus = {
   message?: string | undefined
   loading?: boolean | undefined
   sheets?: { name: string, number: number, index: number }[] | undefined
+  progress?: number | undefined
 }
 export declare type ImportModalProps = {
   open: boolean,
   onDownloadTemplate?: () => Promise<void> | undefined
   onCancel?: () => Promise<void>
-  request: (data: ImportData) => Promise<{ success: boolean, message?: string | undefined }>
+  request: (data: ImportData, callback: (progress: number) => void) => Promise<{ success: boolean, message?: string | undefined }>
 }
 const G_VARIABLE = {
   importExcel: {
@@ -33,9 +34,7 @@ const G_VARIABLE = {
 };
 const App: FC<ImportModalProps> = (props) => {
   const [isOpenImportModal, setIsOpenImportModal] = useState(false);
-  const [importFile, setImportFile] = useState(
-    {} as ImportFileStatus
-  );
+  const [importFile, setImportFile] = useState<ImportFileStatus>({});
   const onConfirmImport = async () => {
     if (importFile.file === undefined) {
       setImportFile({
@@ -54,9 +53,15 @@ const App: FC<ImportModalProps> = (props) => {
     setImportFile({
       ...importFile,
       message: undefined,
-      loading: true
+      loading: true,
+      progress: 0
     });
-    const result = await props.request(G_VARIABLE.importExcel);
+    const result = await props.request(G_VARIABLE.importExcel, (progress) => {
+      setImportFile({
+        ...importFile,
+        progress
+      });
+    });
     if (result.success) {
       setImportFile({
         ...importFile,
@@ -163,7 +168,7 @@ const App: FC<ImportModalProps> = (props) => {
       maskClosable={false}
       open={isOpenImportModal}
       title="数据导入"
-      okText={importFile.loading ? '正在导入' : '确认导入'}
+      okText={importFile.loading ? <>正在导入{(importFile.progress || '') === '' ? '' : '（' + importFile.progress + '%）'}</> : '确认导入'}
       onCancel={() => {
         if (importFile.loading === true) {
           return;
