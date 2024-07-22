@@ -215,26 +215,24 @@ const App: FC<DirectorySelectProps> = (props) => {
               </div>
             </> : undefined}
             {directoryList.map(it => (
-              <>
-                <div key={it.id} className="item" style={{
-                  height: 30,
-                  padding: '0 12px',
-                  display: 'flex',
-                  marginBottom: 2,
-                  alignItems: 'center',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  userSelect: 'none',
-                  borderRadius: token.borderRadius,
-                  overflow: 'hidden'
-                }} onDoubleClick={() => onOpen(it.id, it.name)}>
-                  <Directory/>
-                  <Text style={{
-                    width: '100%',
-                    fontSize: 13
-                  }} ellipsis={true}>{it.name}</Text>
-                </div>
-              </>
+              <div key={it.id} className="item" style={{
+                height: 30,
+                padding: '0 12px',
+                display: 'flex',
+                marginBottom: 2,
+                alignItems: 'center',
+                cursor: 'pointer',
+                position: 'relative',
+                userSelect: 'none',
+                borderRadius: token.borderRadius,
+                overflow: 'hidden'
+              }} onDoubleClick={() => onOpen(it.id, it.name)}>
+                <Directory/>
+                <Text style={{
+                  width: '100%',
+                  fontSize: 13
+                }} ellipsis={true}>{it.name}</Text>
+              </div>
             ))}
           </div>
         </Spin>

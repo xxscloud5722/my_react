@@ -3,7 +3,7 @@ import { App, ConfigProvider, Dropdown, Select, Skeleton, theme, Tree } from 'an
 import { css } from '@emotion/css';
 import { CaretDownOutlined, MenuOutlined, PlusOutlined } from '@ant-design/icons';
 import type { ItemType } from 'antd/es/menu/interface';
-import Flux from '@components/Flux';
+import Flux from './Flux';
 
 export declare type AppModule = {
   code: string

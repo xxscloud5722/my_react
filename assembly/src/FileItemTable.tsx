@@ -61,7 +61,6 @@ const Component: FC<FileItemTableProps> = (props) => {
       tooltip: <span style={{ fontSize: 12 }}>双击文件（目录）名称打开</span>,
       render: (_text: any, record: any) => (
         <div style={{
-          width: '100%',
           display: 'flex',
           alignItems: 'center',
           cursor: 'pointer'
@@ -73,7 +72,7 @@ const Component: FC<FileItemTableProps> = (props) => {
           }}>
             <Text
               style={{
-                width: '100%',
+                width: 510,
                 fontSize: 13
               }}
               ellipsis={{ tooltip: record.name }}>

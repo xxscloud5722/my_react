@@ -8,7 +8,7 @@ import { css } from '@emotion/css';
 import ImportModal, { ImportData } from './ImportModal';
 import NetDiskDirectory, { DirectorySelectProps } from './DirectorySelect';
 import { Config } from './config';
-import Flux from '../Flux';
+import Flux from './Flux';
 
 const G_VARIABLE = {
   searchFormParams: {} as any,
@@ -34,7 +34,8 @@ export declare type TableAutoDataPanelProps = {
     saveExport(code: string, exportId: string, directoryId: string, option: { signal: AbortSignal | undefined }): Promise<boolean | undefined>
   }
   onLoad?: (config: TableConfig) => void | undefined
-  directoryProps?: DirectorySelectProps | undefined,
+  directoryProps?: DirectorySelectProps | undefined
+  isDisplayNetDisk?: boolean | undefined
 }
 export declare type DataItem = {
   id: string | undefined
@@ -795,11 +796,13 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                                       return undefined;
                                     });
                                 }}>下载文件</a>
-                                <Divider type="vertical" style={{ background: '#eee' }}/>
-                                <a onClick={() => {
-                                  setExportItemId(item.id);
-                                  setExportDirectoryModal(true);
-                                }}>保存到网盘</a>
+                                {props?.isDisplayNetDisk === false ? undefined : <>
+                                  <Divider type="vertical" style={{ background: '#eee' }}/>
+                                  <a onClick={() => {
+                                    setExportItemId(item.id);
+                                    setExportDirectoryModal(true);
+                                  }}>保存到网盘</a>
+                                </>}
                               </Space> : undefined}
                             </div>
                           </div>

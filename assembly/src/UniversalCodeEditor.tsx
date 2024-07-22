@@ -88,7 +88,7 @@ export const Component: FC<UniversalCodeEditorProps> = (props) => {
               props?.lang === 'xml' ? xml() : undefined,
               props?.lang === 'javascript' ? javascript({ jsx: true }) : undefined,
               props?.lang === 'json' ? json() : undefined
-            ].filter(it => it !== undefined)}
+            ].filter(it => it !== undefined) as never}
             onChange={(e) => props?.onChange?.(e)}
           />
         </Spin>
