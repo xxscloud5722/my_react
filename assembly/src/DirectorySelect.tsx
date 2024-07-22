@@ -95,8 +95,10 @@ const App: FC<DirectorySelectProps> = (props) => {
     setModal(props?.open || false);
   }, [props.open]);
   useEffect(() => {
-    requestDirectory()
-      .then();
+    if (props?.open === true) {
+      requestDirectory()
+        .then();
+    }
   }, [rootPaths]);
   return <>
     <Modal open={modal} width={380} title={<><span style={{ marginInlineStart: 10 }}>{props?.phrase || '移动'}到</span></>} onCancel={props?.onCancel} styles={{

@@ -1,7 +1,7 @@
 {
   "name": "beer-assembly",
   "private": false,
-  "version": "1.1.1-alpha.32",
+  "version": "1.1.1-alpha.34",
   "scripts": {
     "pub-w": "tsc && copy package.json .\\dist\\package.json && npm publish ./dist",
     "pub-m": "tsc && cp -a src/icon ./dist && cp package.json ./dist/package.json && npm publish ./dist"
@@ -11,6 +11,10 @@
     "@ant-design/pro-components": "^2.6.49",
     "@emotion/css": "^11.11.2",
     "@uiw/react-codemirror": "^4.21.24",
+    "@codemirror/lang-javascript": "^6.2.2",
+    "@codemirror/lang-json": "^6.0.1",
+    "@codemirror/lang-sql": "^6.7.0",
+    "@codemirror/lang-xml": "^6.1.0",
     "antd": "^5.10.0",
     "beer-network": "^1.1.1-alpha.14",
     "history": "^5.3.0",

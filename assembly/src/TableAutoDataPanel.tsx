@@ -8,6 +8,7 @@ import { css } from '@emotion/css';
 import ImportModal, { ImportData } from './ImportModal';
 import NetDiskDirectory, { DirectorySelectProps } from './DirectorySelect';
 import { Config } from './config';
+import Flux from '../Flux';
 
 const G_VARIABLE = {
   searchFormParams: {} as any,
@@ -28,7 +29,7 @@ export declare type TableAutoDataPanelProps = {
     exportTaskList<T>(code: string, option: { signal: AbortSignal | undefined }): Promise<T>
     importTaskList<T>(code: string, option: { signal: AbortSignal | undefined }): Promise<T>
     export<T>(code: string, exportCode: string, fileName: string, params: {}, option: { signal: AbortSignal | undefined }): Promise<T>
-    importData<T>(code: string, importCode: string, importExcel: ImportData, option: { signal: AbortSignal | undefined }): Promise<T>
+    importData<T>(code: string, importCode: string, importExcel: ImportData, callback: (progress: number) => void, option: { signal: AbortSignal | undefined }): Promise<T>
     getDownloadUrl(value: string, fileName: string, option: { signal: AbortSignal | undefined }): Promise<string | undefined>
     saveExport(code: string, exportId: string, directoryId: string, option: { signal: AbortSignal | undefined }): Promise<boolean | undefined>
   }
@@ -111,7 +112,7 @@ export declare type Statistics = {
   message?: string | undefined
   detail?: string | undefined
 };
-const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, ref) => {
+const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, ref) => {
   const [abortController, setAbortController] = useState<AbortController>();
   const { token } = theme.useToken();
   const [messageApi, contextHolder] = message.useMessage();
@@ -367,11 +368,12 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
   const onImport = async () => {
     setIsOpenImportModal(true);
   };
-  const onConfirmImport = async (excelData: ImportData) => {
+  const onConfirmImport = async (excelData: ImportData, callback: (progress: number) => void) => {
     return props.request.importData<{ success: boolean, data: boolean, message: string }>(
       code,
       tableConfig?.importConfig?.code || code,
       excelData,
+      callback,
       { signal: abortController?.signal }
     );
   };
@@ -571,50 +573,72 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
           rowKey="id"
           search={false}
           options={false}
-          headerTitle={<>{tableConfig?.statistics ? <div className={css`
-              font-size: 14px;
-              font-weight: normal;
-              display: flex;
-              align-items: center;
-              padding-left: 12px;
-          `}>
-            {statistics?.status === undefined || statistics?.status === '' ? <>
-              <Spin style={{ marginRight: 8 }} indicator={<LoadingOutlined style={{ fontSize: 14 }} spin/>}/>
-              {tableConfig?.statistics?.loading}
-            </> : undefined}
-            {statistics?.status === 'SUCCESS' ? <>
-              <Badge style={{
-                marginRight: 8,
-                marginTop: -1
-              }} color="green"/> {statistics?.message}
-            </> : undefined}
-            {statistics?.status === 'FAIL' ? <>
-              <Badge style={{
-                marginRight: 8,
-                marginTop: -1
-              }} color="red"/>
-              {statistics?.message}
-              &nbsp;
-              {statistics?.detail !== undefined && statistics?.detail !== '' ? <a onClick={() => {
-                Modal.error({
-                  title: statistics?.title || '系统异常',
-                  content: React.createElement('div', {
-                    dangerouslySetInnerHTML: { __html: statistics?.detail?.replace(/\n/g, '<br/>') || '' }
-                  })
-                });
-              }}>查看详情</a> : undefined}
-            </> : undefined}
-          </div> : undefined}{(tableConfig?.columns || []).length > 1 ? <Radio.Group buttonStyle="solid" value={tableGroupActive} className={css`
-              label {
-                  font-weight: normal;
-              }
-          `} onChange={(e) => {
-            setTableGroupActive(e.target.value);
-          }} disabled={searchIsLoading}>
-            {(tableConfig?.columns || []).map(it => (
-              <Radio.Button value={it.key} key={it.key}>{it.name}</Radio.Button>
-            ))}
-          </Radio.Group> : undefined}
+          headerTitle={<>
+            {tableConfig?.statistics ? <div className={css`
+                font-size: 14px;
+                font-weight: normal;
+                display: flex;
+                align-items: center;
+                padding-left: 12px;
+            `}>
+              {statistics?.status === undefined || statistics?.status === '' ? <>
+                <Spin style={{ marginRight: 8 }} indicator={<LoadingOutlined style={{ fontSize: 14 }} spin/>}/>
+                {tableConfig?.statistics?.loading}
+              </> : undefined}
+              {statistics?.status === 'SUCCESS' ? <>
+                <Badge style={{
+                  marginRight: 8,
+                  marginTop: -1
+                }} color="green"/> {statistics?.message}
+              </> : undefined}
+              {statistics?.status === 'FAIL' ? <>
+                <Badge style={{
+                  marginRight: 8,
+                  marginTop: -1
+                }} color="red"/>
+                {statistics?.message}
+                &nbsp;
+                {statistics?.detail !== undefined && statistics?.detail !== '' ? <a onClick={() => {
+                  Modal.error({
+                    title: statistics?.title || '系统异常',
+                    content: React.createElement('div', {
+                      dangerouslySetInnerHTML: { __html: statistics?.detail?.replace(/\n/g, '<br/>') || '' }
+                    })
+                  });
+                }}>查看详情</a> : undefined}
+              </> : undefined}
+            </div> : undefined}
+            {(tableConfig?.columns || []).length > 1 && (tableConfig?.columns || []).length <= 4 ? <Radio.Group buttonStyle="solid" value={tableGroupActive} className={css`
+                label {
+                    font-weight: normal;
+                }
+            `} onChange={(e) => {
+              setTableGroupActive(e.target.value);
+            }} disabled={searchIsLoading}>
+              {(tableConfig?.columns || []).map(it => (
+                <Radio.Button value={it.key} key={it.key}>{it.name}</Radio.Button>
+              ))}
+            </Radio.Group> : undefined}
+            {(tableConfig?.columns || []).length > 4 ? <Flux style={{ height: 32 }}>
+              <Tabs className={css`
+                  max-width: 560px !important;
+
+                  .ant-tabs-tab {
+                      font-size: 13px !important;
+                      font-weight: 400 !important;
+                  }
+              `} tabBarStyle={{ lineHeight: 1 }} tabBarGutter={10} size="small" items={
+                (tableConfig.columns || []).map(it => {
+                  return {
+                    key: it.key,
+                    label: it.name,
+                    children: undefined
+                  };
+                }) as never
+              } onChange={(e) => {
+                setTableGroupActive(e);
+              }}/>
+            </Flux> : undefined}
           </>}
           pagination={{
             current: currentPage,
@@ -812,7 +836,7 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
       <ImportModal
         open={isOpenImportModal}
         onCancel={async () => setIsOpenImportModal(false)}
-        request={async (importData) => onConfirmImport(importData)}
+        request={async (importData, callback) => onConfirmImport(importData, callback)}
         onDownloadTemplate={async () => {
           const importConfig = tableConfig?.importConfig;
           if (importConfig === undefined) {
@@ -878,4 +902,4 @@ const App = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((props, r
     </>
   );
 });
-export default App;
+export default Component;
