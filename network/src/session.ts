@@ -36,7 +36,8 @@ export class Session {
    * @param url 退出之后的地址.
    */
   public static logout(url?: string) {
-    localStorage.clear();
+    localStorage?.clear();
+    sessionStorage?.clear();
     if (url !== undefined && url !== '') {
       window.location.href = url;
     }
