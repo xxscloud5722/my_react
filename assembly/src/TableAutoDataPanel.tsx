@@ -1,6 +1,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Badge, Button, Divider, Drawer, Flex, Input, List, message, Modal, Radio, Space, Spin, Tabs, theme } from 'antd';
-import { LoadingOutlined } from '@ant-design/icons';
+import { Badge, Button, Divider, Drawer, Flex, Input, List, message, Modal, Radio, Space, Spin, Tabs, theme, Typography } from 'antd';
+import { CopyOutlined, LoadingOutlined } from '@ant-design/icons';
 import { ActionType, BetaSchemaForm, ProTable } from '@ant-design/pro-components';
 import { FormInstance } from 'antd/lib';
 import ElementUtils from 'beer-network/elementUtils';
@@ -61,7 +61,7 @@ export declare type TableConfig = {
     // SELECT 远程加载数据的代码
     valueCode: string
     // SELECT 的选择枚举 或者 数组（会将数组转成对象）
-    valueEnum: { label: string, value: string } | []
+    valueEnum: { label: string, value: string } [] | {}
     // 只有SELECT 生效, 判断是否监听另外一个
     listening: string
   }[]
@@ -283,7 +283,7 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
         continue;
       }
       // 下拉选
-      if ((formItem.valueType || '').toLowerCase()
+      if ((formItem.valueType || '').toUpperCase()
         .indexOf('SELECT') > -1) {
         const string = value.toString();
         const index = string.indexOf('_');
@@ -698,9 +698,10 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                           {item.status === 2 ? <Badge status="success" text={<span style={{ fontSize: '13px' }}>导入执行完成</span>}/> : undefined}
                           {item.status === 5 ? <Badge status="error" text={<span style={{ fontSize: '13px' }}>导入失败</span>}/> : undefined}
                           <div style={{ paddingLeft: '14px' }}>
-                            <p className={css`
+                            <Typography.Text className={css`
                                 font-weight: 500;
-                            `}>{item.fileName || '未知的文件.xlsx'}</p>
+                                width: 310px;
+                            `} ellipsis={true} copyable={{ icon: <><CopyOutlined style={{ color: '#333' }}/></> }}>{item.fileName || '未知的文件.xlsx'}</Typography.Text>
                             {item.status === 2 ? <p className={css`
                                 color: #333;
                                 font-size: 12px;
