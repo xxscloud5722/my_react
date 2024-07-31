@@ -1,8 +1,7 @@
 {
   "name": "beer-network",
   "private": false,
-  "version": "1.1.1-alpha.15",
-  "type": "module",
+  "version": "1.1.1-alpha.16",
   "scripts": {
     "pub-w": "tsc && copy package.json .\\dist\\package.json && npm publish ./dist",
     "pub-m": "tsc && cp package.json ./dist/package.json && npm publish ./dist"
