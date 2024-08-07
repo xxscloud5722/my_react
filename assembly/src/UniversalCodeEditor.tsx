@@ -6,7 +6,7 @@ import { xml } from '@codemirror/lang-xml';
 import { sql } from '@codemirror/lang-sql';
 import { javascript } from '@codemirror/lang-javascript';
 import { css } from '@emotion/css';
-import emptyIcon from '@assets/empty.svg';
+import emptyIcon from './icon/empty.svg';
 
 export declare type UniversalCodeEditorProps = {
   lang?: 'sql' | 'xml' | 'javascript' | 'json' | undefined

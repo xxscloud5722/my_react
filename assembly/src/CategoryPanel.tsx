@@ -18,6 +18,7 @@ export declare type CategoryPanelProps = {
   width?: number | undefined
   fontSize?: number | undefined
   style?: CSSProperties | undefined
+  appTitle?: string | undefined
   appList?: AppModule[] | undefined
   appItems?: AppModuleItem[] | undefined
   onCreate?: () => void | undefined
@@ -198,7 +199,7 @@ export const Component: FC<CategoryPanelProps> = (props) => {
         <Flux style={{
           height: 32
         }} size={10}>
-          <Select
+          {props?.appTitle === undefined || props?.appTitle === '' ? <Select
             variant="filled"
             placeholder="选择模块"
             className={css`
@@ -216,7 +217,7 @@ export const Component: FC<CategoryPanelProps> = (props) => {
                 label: it.name
               };
             })}
-          />
+          /> : <div className={css`flex: 1;`}>{props?.appTitle}</div>}
           {props?.isAllowCreate ? <a className={css`
               background: rgba(0, 0, 0, 0.04);
               width: 30px;
