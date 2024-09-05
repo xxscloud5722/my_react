@@ -1,5 +1,5 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Badge, Button, Divider, Drawer, Flex, Input, List, message, Modal, Radio, Space, Spin, Tabs, theme, Typography } from 'antd';
+import React, { CSSProperties, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Badge, Button, Divider, Drawer, Flex, Input, List, message, Modal, Popconfirm, Radio, Space, Spin, Tabs, theme, Typography } from 'antd';
 import { CopyOutlined, LoadingOutlined } from '@ant-design/icons';
 import { ActionType, BetaSchemaForm, ProTable } from '@ant-design/pro-components';
 import { FormInstance } from 'antd/lib';
@@ -33,9 +33,14 @@ export declare type TableAutoDataPanelProps = {
     getDownloadUrl(value: string, fileName: string, option: { signal: AbortSignal | undefined }): Promise<string | undefined>
     saveExport(code: string, exportId: string, directoryId: string, option: { signal: AbortSignal | undefined }): Promise<boolean | undefined>
   }
+  style?: CSSProperties | undefined
   onLoad?: (config: TableConfig) => void | undefined
+  onChangeEvent?: (eventName: string, item: any) => void | undefined
   directoryProps?: DirectorySelectProps | undefined
   isDisplayNetDisk?: boolean | undefined
+
+  headerTitle?: React.ReactNode | undefined
+  toolBarRender?: React.ReactNode | undefined
 }
 export declare type DataItem = {
   id: string | undefined
@@ -81,7 +86,27 @@ export declare type TableConfig = {
     message: string
   }
   // 列
-  columns?: { key: string, name: string, columns: { dataIndex: string, title: string, width: string | number, renderContent: string }[] }[]
+  columns?: {
+    key: string, name: string, columns: {
+      dataIndex: string
+      title: string
+      width: string | number
+      renderContent: string
+      menusItems?: {
+        key: string
+        text: string
+        color?: string | undefined
+        condition?: string | undefined
+        eventName: string
+        popConfirm?: {
+          title: string
+          description: string
+          okText: string
+          cancelText: string
+        } | undefined
+      }[] | undefined
+    }[]
+  }[]
   // 列表统计
   statistics?: { code: string, loading: string }
 
@@ -106,6 +131,7 @@ export declare type ImportItem = {
 }
 export declare type TableAutoDataPanelRef = {
   refresh(): void;
+  refreshData(): void;
 }
 export declare type Statistics = {
   title?: string | undefined
@@ -457,12 +483,18 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
       await messageApi.error('提交任务失败，请联系服务商');
     }
   };
+  const onChangeEvent = (eventName: string, item: any) => {
+    props?.onChangeEvent?.(eventName, item);
+  };
   useImperativeHandle(ref, () => ({
     refresh: () => {
       abortController?.abort('to Page: ' + props.code);
       G_VARIABLE.reset();
       setSearchParams({});
       setAbortController(new AbortController());
+    },
+    refreshData: () => {
+      tableRef?.current?.reload?.();
     }
   }));
   useEffect(() => {
@@ -484,63 +516,66 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
     setCurrentPage(1);
     tableRef?.current?.reload();
   }, [tableGroupActive]);
+
   return (
-    <>
+    <div style={props?.style}>
       {contextHolder}
       {tableConfig?.code === undefined ? undefined : <>
-        {tableConfig?.searchForm !== undefined ? <BetaSchemaForm<DataItem>
-          layoutType="Form"
-          formRef={formRef}
-          style={{
-            background: '#fff',
-            padding: 20,
-            marginBottom: 20,
-            borderRadius: token.borderRadius
-          }}
-          className="search-beta-form"
-          onFinish={async (formParams: {}) => {
-            G_VARIABLE.searchFormParams = parseFormValue(formParams);
-            await tableRef.current?.reload();
-            setCurrentPage(1);
-          }}
-          onValuesChange={async (formParams) => {
-            const params = parseFormValue(formParams);
-            const searchForm = tableConfig?.searchForm;
-            const keys = Object.keys(params);
-            const listeningFormItems = searchForm?.filter(it => it.listening !== undefined && it.listening !== ''
-              && it.valueCode !== undefined && it.valueCode !== '' && keys.indexOf(it.listening) > -1);
-            if (listeningFormItems !== undefined && listeningFormItems.length > 0) {
-              for (const formItem of listeningFormItems) {
-                const selectItem: any = {};
-                (await requestSelectValue(formItem.valueCode, params)).forEach(it => {
-                  selectItem[it.value] = {
-                    text: it.label,
-                    status: it.value
-                  };
+        {
+          tableConfig?.searchForm !== undefined ? <BetaSchemaForm<DataItem>
+            layoutType="Form"
+            formRef={formRef}
+            style={{
+              background: '#fff',
+              padding: 20,
+              marginBottom: 20,
+              borderRadius: token.borderRadius
+            }}
+            className="search-beta-form"
+            onFinish={async (formParams: {}) => {
+              G_VARIABLE.searchFormParams = parseFormValue(formParams);
+              await tableRef.current?.reload();
+              setCurrentPage(1);
+            }}
+            onValuesChange={async (formParams) => {
+              const params = parseFormValue(formParams);
+              const searchForm = tableConfig?.searchForm;
+              const keys = Object.keys(params);
+              const listeningFormItems = searchForm?.filter(it => it.listening !== undefined && it.listening !== ''
+                && it.valueCode !== undefined && it.valueCode !== '' && keys.indexOf(it.listening) > -1);
+              if (listeningFormItems !== undefined && listeningFormItems.length > 0) {
+                for (const formItem of listeningFormItems) {
+                  const selectItem: any = {};
+                  (await requestSelectValue(formItem.valueCode, params)).forEach(it => {
+                    selectItem[it.value] = {
+                      text: it.label,
+                      status: it.value
+                    };
+                  });
+                  formItem.valueEnum = selectItem;
+                  formItem.key = new Date().getTime() + '---' + formItem.key.split('---')[1];
+                }
+                setTableConfig({
+                  ...tableConfig,
+                  searchForm: searchForm as never,
+                  aForm: createFrom(searchForm)
                 });
-                formItem.valueEnum = selectItem;
-                formItem.key = new Date().getTime() + '---' + formItem.key.split('---')[1];
               }
-              setTableConfig({
-                ...tableConfig,
-                searchForm: searchForm as never,
-                aForm: createFrom(searchForm)
-              });
-            }
-          }}
-          submitter={{
-            render: () => {
-              return <Flex style={{ justifyContent: 'flex-end' }}>
-                <Space size={12}>
-                  <Button type="primary" onClick={onSearch} loading={searchIsLoading}>查询</Button>
-                  <Button onClick={() => {
-                    formRef.current?.resetFields();
-                  }}>重置</Button>
-                </Space>
-              </Flex>;
-            }
-          }}
-          columns={tableConfig.aForm}/> : undefined}
+            }}
+            submitter={{
+              render: () => {
+                return <Flex style={{ justifyContent: 'flex-end' }}>
+                  <Space size={12}>
+                    <Button type="primary" onClick={onSearch} loading={searchIsLoading}>查询</Button>
+                    <Button onClick={() => {
+                      formRef.current?.resetFields();
+                    }}>重置</Button>
+                  </Space>
+                </Flex>;
+              }
+            }}
+            columns={tableConfig.aForm}/> : undefined
+        }
         <ProTable<DataItem>
           actionRef={tableRef}
           columns={tableConfig?.columns?.filter(it => {
@@ -562,6 +597,29 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                       return React.createElement('div', {
                         dangerouslySetInnerHTML: { __html: element }
                       });
+                    }
+                  };
+                }
+                if (it.menusItems !== undefined) {
+                  return {
+                    ...it,
+                    render: (value: never, record: {}) => {
+                      return <Space size={8}>
+                        {it.menusItems?.filter(it => {
+                          // eslint-disable-next-line no-eval
+                          return (it.condition === undefined || it.condition === '') || eval(it.condition);
+                        })
+                          .map(it => (
+                            <span key={it.key}>
+                              {it.popConfirm === undefined ? <a style={{ color: it.color }} onClick={() => onChangeEvent(it.eventName, record)}>{it.text}</a> : undefined}
+                              {it.popConfirm !== undefined ? <Popconfirm {...it.popConfirm} onConfirm={() => {
+                                onChangeEvent(it.eventName, record);
+                              }}>
+                                <a style={{ color: it.color }}>{it.text}</a>
+                              </Popconfirm> : undefined}
+                            </span>
+                          ))}
+                      </Space>;
                     }
                   };
                 }
@@ -640,6 +698,7 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                 setTableGroupActive(e);
               }}/>
             </Flux> : undefined}
+            {props?.headerTitle}
           </>}
           pagination={{
             current: currentPage,
@@ -647,6 +706,7 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
           }}
           toolBarRender={() => [
             <>
+              {props?.toolBarRender}
               {(tableConfig?.modules || []).indexOf('IMPORT') > -1 ? <Button type="primary" onClick={onImport}>
                 导入数据
               </Button> : undefined}
@@ -903,7 +963,7 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
           setExportDirectoryModal(false);
         }}
         onCancel={() => setExportDirectoryModal(false)}/>
-    </>
+    </div>
   );
 });
 export default Component;
