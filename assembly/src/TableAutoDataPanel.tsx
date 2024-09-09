@@ -9,6 +9,7 @@ import ImportModal, { ImportData } from './ImportModal';
 import NetDiskDirectory, { DirectorySelectProps } from './DirectorySelect';
 import { Config } from './config';
 import Flux from './Flux';
+import { Link } from 'react-router-dom';
 
 const G_VARIABLE = {
   searchFormParams: {} as any,
@@ -91,13 +92,16 @@ export declare type TableConfig = {
       dataIndex: string
       title: string
       width: string | number
-      renderContent: string
+      renderContent: { content: string, condition: string }[]
+      link?: string
+      openLink?: string
       menusItems?: {
         key: string
         text: string
         color?: string | undefined
         condition?: string | undefined
         eventName: string
+        type: 'divider' | undefined
         popConfirm?: {
           title: string
           description: string
@@ -590,13 +594,43 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                   return {
                     ...it,
                     render: (value: never, record: {}, _index: any) => {
-                      let element = it.renderContent.replace('#{value}', value);
+                      return it.renderContent?.filter(it => {
+                        // eslint-disable-next-line no-eval
+                        return (it.condition === undefined || it.condition === '') || eval(it.condition);
+                      })
+                        ?.map(it => {
+                          let element = it.content.replace('#{value}', value);
+                          for (const key of Object.keys(record)) {
+                            element = element.replace(`#{${key}}`, (record as any)[key]);
+                          }
+                          return React.createElement('div', {
+                            dangerouslySetInnerHTML: { __html: element }
+                          });
+                        });
+                    }
+                  };
+                }
+                if (it.link !== undefined) {
+                  return {
+                    ...it,
+                    render: (value: never, record: any) => {
+                      let element = it.link?.replace('#{value}', value) || '';
                       for (const key of Object.keys(record)) {
                         element = element.replace(`#{${key}}`, (record as any)[key]);
                       }
-                      return React.createElement('div', {
-                        dangerouslySetInnerHTML: { __html: element }
-                      });
+                      return <Link to={element}>{value}</Link>;
+                    }
+                  };
+                }
+                if (it.openLink !== undefined) {
+                  return {
+                    ...it,
+                    render: (value: never, record: any) => {
+                      let element = it.link?.replace('#{value}', value) || '';
+                      for (const key of Object.keys(record)) {
+                        element = element.replace(`#{${key}}`, (record as any)[key]);
+                      }
+                      return <a href={element} target="_blank" rel="noopener noreferrer">{value}</a>;
                     }
                   };
                 }
@@ -611,6 +645,10 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                         })
                           .map(it => (
                             <span key={it.key}>
+                              {it.type === 'divider' ? <Divider type="vertical" style={{
+                                background: 'rgba(0,0,0,0.12)',
+                                margin: '0'
+                              }}/> : undefined}
                               {it.popConfirm === undefined ? <a style={{ color: it.color }} onClick={() => onChangeEvent(it.eventName, record)}>{it.text}</a> : undefined}
                               {it.popConfirm !== undefined ? <Popconfirm {...it.popConfirm} onConfirm={() => {
                                 onChangeEvent(it.eventName, record);

@@ -1,7 +1,7 @@
 {
   "name": "beer-assembly",
   "private": false,
-  "version": "1.1.1-alpha.41",
+  "version": "1.1.1-alpha.43",
   "scripts": {
     "pub-w": "tsc && copy package.json .\\dist\\package.json && npm publish ./dist",
     "pub-m": "tsc && cp -a src/icon ./dist && cp package.json ./dist/package.json && npm publish ./dist"
