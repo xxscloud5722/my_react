@@ -85,8 +85,7 @@ export declare type TableConfig = {
     // 只有SELECT 生效, 判断是否监听另外一个
     listening: string
   }[]
-  // 搜索表单弹性数量 默认: 4
-  searchFormWrapLength: number
+  searchFormWrap: boolean | number
   // 搜索配置
   searchConfig?: { code: string }
   // 导出配置
@@ -287,7 +286,12 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
       .then(async result => {
         if (result.success) {
           const defaultSearchParams: any = {};
-          result.data.aFormBlockSearch = (result.data?.searchForm || []).length > (result.data.searchFormWrapLength || 4);
+          result.data.aFormBlockSearch = result.data?.searchFormWrap === undefined;
+          if (typeof result.data?.searchFormWrap === 'boolean') {
+            result.data.aFormBlockSearch = result.data?.searchFormWrap;
+          } else {
+            result.data.aFormBlockSearch = (result.data?.searchForm || []).length > (result.data?.searchFormWrap || 4);
+          }
           if ((result.data?.searchForm || []).length > 0) {
             const searchFormItems: any[] = result.data?.searchForm || [];
             if (!result.data.aFormBlockSearch) {
