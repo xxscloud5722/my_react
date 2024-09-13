@@ -1,7 +1,8 @@
 import React, { CSSProperties, forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Badge, Button, Divider, Drawer, Flex, Input, List, message, Modal, Popconfirm, Radio, Space, Spin, Tabs, theme, Typography } from 'antd';
-import { CopyOutlined, LoadingOutlined } from '@ant-design/icons';
+import { Badge, Button, Divider, Drawer, Dropdown, Flex, Input, List, message, Modal, Popconfirm, Radio, Space, Spin, Tabs, theme, Typography } from 'antd';
+import { CopyOutlined, LoadingOutlined, MoreOutlined } from '@ant-design/icons';
 import { ActionType, BetaSchemaForm, ProTable } from '@ant-design/pro-components';
+import { Link } from 'react-router-dom';
 import { FormInstance } from 'antd/lib';
 import ElementUtils from 'beer-network/elementUtils';
 import { css } from '@emotion/css';
@@ -9,15 +10,28 @@ import ImportModal, { ImportData } from './ImportModal';
 import NetDiskDirectory, { DirectorySelectProps } from './DirectorySelect';
 import { Config } from './config';
 import Flux from './Flux';
-import { Link } from 'react-router-dom';
 
 const G_VARIABLE = {
+  isInit: true,
   searchFormParams: {} as any,
+  defaultSearchParams: {} as any,
   formParams: () => {
     return { ...G_VARIABLE.searchFormParams };
   },
   reset: () => {
     G_VARIABLE.searchFormParams = {};
+    G_VARIABLE.defaultSearchParams = {};
+    G_VARIABLE.isInit = true;
+  },
+  defaultParams: (params: {}) => {
+    G_VARIABLE.defaultSearchParams = params;
+  },
+  getDefaultSearchParams: () => {
+    if (G_VARIABLE.isInit) {
+      G_VARIABLE.isInit = false;
+      return G_VARIABLE.defaultSearchParams;
+    }
+    return {};
   }
 };
 export declare type TableAutoDataPanelProps = {
@@ -71,6 +85,8 @@ export declare type TableConfig = {
     // 只有SELECT 生效, 判断是否监听另外一个
     listening: string
   }[]
+  // 搜索表单弹性数量 默认: 4
+  searchFormWrapLength: number
   // 搜索配置
   searchConfig?: { code: string }
   // 导出配置
@@ -101,7 +117,8 @@ export declare type TableConfig = {
         color?: string | undefined
         condition?: string | undefined
         eventName: string
-        type: 'divider' | undefined
+        type: 'divider' | 'menus' | undefined
+        items: {}[]
         popConfirm?: {
           title: string
           description: string
@@ -116,6 +133,9 @@ export declare type TableConfig = {
 
   // 自定义表单
   aForm: any
+
+  // 是否单独一行
+  aFormBlockSearch: boolean
 }
 export declare type ExportItem = {
   id: string
@@ -183,6 +203,15 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
   const [exportItemId, setExportItemId] = useState('');
   const [exportDirectoryModal, setExportDirectoryModal] = useState(false);
 
+  const FormConsole = () => {
+    return <Space size={12}>
+      <Button type="primary" onClick={onSearch} loading={searchIsLoading}>查询</Button>
+      <Button onClick={() => {
+        formRef.current?.resetFields();
+      }}>重置</Button>
+    </Space>;
+  };
+
   const createFrom = (searchForm: any) => {
     return [{
       key: '_' + new Date().getTime(),
@@ -196,6 +225,7 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
       .then();
     setSearchIsLoading(true);
     const requestParams = {
+      ...G_VARIABLE.getDefaultSearchParams(),
       ...params,
       ...G_VARIABLE.formParams(),
       tableGroupCode: (tableConfig?.columns || []).length > 1 ? tableGroupActive : undefined,
@@ -256,8 +286,20 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
     return props.request.config<{ success: boolean, message: string, data: TableConfig }>(code, { signal: abortController?.signal })
       .then(async result => {
         if (result.success) {
+          const defaultSearchParams: any = {};
+          result.data.aFormBlockSearch = (result.data?.searchForm || []).length > (result.data.searchFormWrapLength || 4);
           if ((result.data?.searchForm || []).length > 0) {
-            const searchFormItems = result.data?.searchForm || [];
+            const searchFormItems: any[] = result.data?.searchForm || [];
+            if (!result.data.aFormBlockSearch) {
+              searchFormItems.push({
+                key: '_panel',
+                title: ' ',
+                dataIndex: '_panel',
+                renderFormItem: () => {
+                  return (<FormConsole/>);
+                }
+              });
+            }
             for (const it of searchFormItems) {
               // 设置控件key
               if (it.key.indexOf('---') < 0) {
@@ -288,9 +330,16 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
               }
             }
             result.data.aForm = createFrom(searchFormItems);
+            // 获取默认参数
+            for (const it of searchFormItems) {
+              if (it.initialValue === undefined) {
+                continue;
+              }
+              defaultSearchParams[it.key] = it.initialValue;
+            }
           }
-
           G_VARIABLE.reset();
+          G_VARIABLE.defaultParams(parseFormValue(defaultSearchParams, result.data.searchForm));
           setCurrentPage(1);
           setTabsActive('00');
           setTableConfig(result.data);
@@ -302,9 +351,9 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
         return result;
       });
   };
-  const parseFormValue = (value: any) => {
+  const parseFormValue = (value: any, formItems?: { key: string, valueType: string }[] | undefined) => {
     const params: any = { ...value };
-    const formItems = tableConfig?.searchForm;
+    formItems = formItems || tableConfig?.searchForm;
     for (const key of Object.keys(params)) {
       const keyId = key.split('---')[1];
       const value = params[key];
@@ -487,8 +536,10 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
       await messageApi.error('提交任务失败，请联系服务商');
     }
   };
-  const onChangeEvent = (eventName: string, item: any) => {
-    props?.onChangeEvent?.(eventName, item);
+  const onChangeEvent = (eventName: string | undefined, item: any) => {
+    if (eventName !== undefined) {
+      props?.onChangeEvent?.(eventName, item);
+    }
   };
   useImperativeHandle(ref, () => ({
     refresh: () => {
@@ -566,15 +617,10 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                 });
               }
             }}
-            submitter={{
+            submitter={tableConfig?.aFormBlockSearch === false ? false : {
               render: () => {
                 return <Flex style={{ justifyContent: 'flex-end' }}>
-                  <Space size={12}>
-                    <Button type="primary" onClick={onSearch} loading={searchIsLoading}>查询</Button>
-                    <Button onClick={() => {
-                      formRef.current?.resetFields();
-                    }}>重置</Button>
-                  </Space>
+                  <FormConsole/>
                 </Flex>;
               }
             }}
@@ -598,13 +644,18 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                         // eslint-disable-next-line no-eval
                         return (it.condition === undefined || it.condition === '') || eval(it.condition);
                       })
-                        ?.map(it => {
+                        ?.map((it, index) => {
                           let element = it.content.replace('#{value}', value);
                           for (const key of Object.keys(record)) {
                             element = element.replace(`#{${key}}`, (record as any)[key]);
                           }
                           return React.createElement('div', {
-                            dangerouslySetInnerHTML: { __html: element }
+                            key: index,
+                            dangerouslySetInnerHTML: { __html: element },
+                            style: {
+                              display: 'flex',
+                              alignItems: 'center'
+                            }
                           });
                         });
                     }
@@ -649,8 +700,32 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                                 background: 'rgba(0,0,0,0.12)',
                                 margin: '0'
                               }}/> : undefined}
-                              {it.popConfirm === undefined ? <a style={{ color: it.color }} onClick={() => onChangeEvent(it.eventName, record)}>{it.text}</a> : undefined}
-                              {it.popConfirm !== undefined ? <Popconfirm {...it.popConfirm} onConfirm={() => {
+                              {it.type === 'menus' ? <Dropdown menu={{
+                                items: (it.items || [])?.map((item: any) => {
+                                  return {
+                                    ...it,
+                                    label: <span
+                                      style={{
+                                        color: item.color,
+                                        width: item.width
+                                      }}
+                                      onClick={() => onChangeEvent(item?.eventName, record)}>
+                                      {item.name}
+                                    </span>
+                                  };
+                                }) as never
+                              }} trigger={['click']}>
+                                <MoreOutlined style={{
+                                  fontSize: 13,
+                                  fontWeight: 'bold',
+                                  rotate: '90deg',
+                                  cursor: 'pointer',
+                                  marginTop: 4
+                                }}/>
+                              </Dropdown> : undefined}
+                              {it.type === undefined && it.popConfirm === undefined ? <a
+                                style={{ color: it.color }} onClick={() => onChangeEvent(it.eventName, record)}>{it.text}</a> : undefined}
+                              {it.type === undefined && it.popConfirm !== undefined ? <Popconfirm {...it.popConfirm} onConfirm={() => {
                                 onChangeEvent(it.eventName, record);
                               }}>
                                 <a style={{ color: it.color }}>{it.text}</a>
