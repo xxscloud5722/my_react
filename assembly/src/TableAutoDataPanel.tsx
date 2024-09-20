@@ -11,29 +11,33 @@ import NetDiskDirectory, { DirectorySelectProps } from './DirectorySelect';
 import { Config } from './config';
 import Flux from './Flux';
 
-const G_VARIABLE = {
-  isInit: true,
-  searchFormParams: {} as any,
-  defaultSearchParams: {} as any,
-  formParams: () => {
-    return { ...G_VARIABLE.searchFormParams };
-  },
-  reset: () => {
-    G_VARIABLE.searchFormParams = {};
-    G_VARIABLE.defaultSearchParams = {};
-    G_VARIABLE.isInit = true;
-  },
-  defaultParams: (params: {}) => {
-    G_VARIABLE.defaultSearchParams = params;
-  },
-  getDefaultSearchParams: () => {
-    if (G_VARIABLE.isInit) {
-      G_VARIABLE.isInit = false;
-      return G_VARIABLE.defaultSearchParams;
-    }
-    return {};
-  }
-};
+// const G_VARIABLE = {
+//   isInit: true,
+//   searchFormParams: {} as any,
+//   defaultSearchParams: {} as any,
+//   isDefaultParams: true,
+//   formParams: () => {
+//     return { ...G_VARIABLE.searchFormParams };
+//   },
+//   reset: () => {
+//     G_VARIABLE.searchFormParams = {};
+//     G_VARIABLE.isDefaultParams = true;
+//     G_VARIABLE.isInit = true;
+//   },
+//   setDefaultParamsStatus: (status: boolean) => {
+//     G_VARIABLE.isDefaultParams = status;
+//   },
+//   setDefaultParams: (value: {}) => {
+//     G_VARIABLE.defaultSearchParams = value;
+//   },
+//   getDefaultParams: () => {
+//     if (G_VARIABLE.isDefaultParams) {
+//       return G_VARIABLE.defaultSearchParams;
+//     }
+//     return {};
+//   }
+// };
+
 export declare type TableAutoDataPanelProps = {
   code: string
   request: {
@@ -50,7 +54,7 @@ export declare type TableAutoDataPanelProps = {
   }
   style?: CSSProperties | undefined
   onLoad?: (config: TableConfig) => void | undefined
-  onChangeEvent?: (eventName: string, item: any) => void | undefined
+  onChangeEvent?: (eventName: string, item: any) => Promise<void> | undefined
   directoryProps?: DirectorySelectProps | undefined
   isDisplayNetDisk?: boolean | undefined
 
@@ -125,6 +129,7 @@ export declare type TableConfig = {
           cancelText: string
         } | undefined
       }[] | undefined
+      merge: { row: string, col: string }
     }[]
   }[]
   // 列表统计
@@ -174,6 +179,7 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
   const [tableConfig, setTableConfig] = useState({} as TableConfig);
   const [statistics, setStatistics] = useState({} as Statistics);
 
+  const [searchDefaultParams, setSearchDefaultParams] = useState({});
   const [searchParams, setSearchParams] = useState({});
   const [searchIsLoading, setSearchIsLoading] = useState(false);
 
@@ -223,11 +229,12 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
     requestStatistics()
       .then();
     setSearchIsLoading(true);
+    const formData = parseFormValue(formRef.current?.getFieldsValue());
     const requestParams = {
-      ...G_VARIABLE.getDefaultSearchParams(),
       ...params,
-      ...G_VARIABLE.formParams(),
+      ...formData,
       tableGroupCode: (tableConfig?.columns || []).length > 1 ? tableGroupActive : undefined,
+      __source: undefined,
       current: undefined,
       pageSize: undefined
     } as any;
@@ -284,7 +291,7 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
   const requestTableConfig = async (code: string) => {
     return props.request.config<{ success: boolean, message: string, data: TableConfig }>(code, { signal: abortController?.signal })
       .then(async result => {
-        if (result.success) {
+        if (result.success && result.data !== undefined) {
           const defaultSearchParams: any = {};
           result.data.aFormBlockSearch = result.data?.searchFormWrap === undefined;
           if (typeof result.data?.searchFormWrap === 'boolean') {
@@ -294,7 +301,7 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
           }
           if ((result.data?.searchForm || []).length > 0) {
             const searchFormItems: any[] = result.data?.searchForm || [];
-            if (!result.data.aFormBlockSearch) {
+            if (!result.data?.aFormBlockSearch) {
               searchFormItems.push({
                 key: '_panel',
                 title: ' ',
@@ -342,15 +349,15 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
               defaultSearchParams[it.key] = it.initialValue;
             }
           }
-          G_VARIABLE.reset();
-          G_VARIABLE.defaultParams(parseFormValue(defaultSearchParams, result.data.searchForm));
+          formRef?.current?.resetFields();
+          setSearchDefaultParams(parseFormValue(defaultSearchParams, result.data.searchForm));
           setCurrentPage(1);
           setTabsActive('00');
           setTableConfig(result.data);
           rendering(result.data);
           props?.onLoad?.(result.data);
         } else {
-          messageApi.error(result.message);
+          messageApi.error(result.message || '找不到表格配置');
         }
         return result;
       });
@@ -361,6 +368,9 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
     for (const key of Object.keys(params)) {
       const keyId = key.split('---')[1];
       const value = params[key];
+      if (value === null || value === undefined) {
+        continue;
+      }
       const formItem = formItems?.find(it => it.key.split('---')[1] === keyId);
       if (formItem === undefined) {
         continue;
@@ -548,8 +558,7 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
   useImperativeHandle(ref, () => ({
     refresh: () => {
       abortController?.abort('to Page: ' + props.code);
-      G_VARIABLE.reset();
-      setSearchParams({});
+      formRef?.current?.resetFields();
       setAbortController(new AbortController());
     },
     refreshData: () => {
@@ -591,10 +600,10 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
               borderRadius: token.borderRadius
             }}
             className="search-beta-form"
-            onFinish={async (formParams: {}) => {
-              G_VARIABLE.searchFormParams = parseFormValue(formParams);
-              await tableRef.current?.reload();
+            initialValues={searchDefaultParams}
+            onFinish={async () => {
               setCurrentPage(1);
+              tableRef?.current?.reload();
             }}
             onValuesChange={async (formParams) => {
               const params = parseFormValue(formParams);
@@ -640,9 +649,38 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
           })
             .map(a => {
               return a.columns.map(it => {
-                if (it.renderContent !== undefined) {
+                const item: any = { ...it };
+                if (item.merge !== undefined) {
+                  const rowKey = it.merge.row;
+                  const colKey = it.merge.col;
+                  item.onCell = (record: any, _index: number) => {
+                    let colSpan;
+                    if (colKey === undefined) {
+                      colSpan = undefined;
+                    } else {
+                      colSpan = record[colKey];
+                      if (colSpan?.toUpperCase() === 'NONE') {
+                        colSpan = 0;
+                      }
+                    }
+                    let rowSpan;
+                    if (rowKey === undefined) {
+                      rowSpan = undefined;
+                    } else {
+                      rowSpan = record[rowKey];
+                      if (rowSpan?.toUpperCase() === 'NONE') {
+                        rowSpan = 0;
+                      }
+                    }
+                    return {
+                      colSpan,
+                      rowSpan
+                    };
+                  };
+                }
+                if (item.renderContent !== undefined) {
                   return {
-                    ...it,
+                    ...item,
                     render: (value: never, record: {}, _index: any) => {
                       return it.renderContent?.filter(it => {
                         // eslint-disable-next-line no-eval
@@ -665,9 +703,9 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                     }
                   };
                 }
-                if (it.link !== undefined) {
+                if (item.link !== undefined) {
                   return {
-                    ...it,
+                    ...item,
                     render: (value: never, record: any) => {
                       let element = it.link?.replace('#{value}', value) || '';
                       for (const key of Object.keys(record)) {
@@ -677,9 +715,9 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                     }
                   };
                 }
-                if (it.openLink !== undefined) {
+                if (item.openLink !== undefined) {
                   return {
-                    ...it,
+                    ...item,
                     render: (value: never, record: any) => {
                       let element = it.link?.replace('#{value}', value) || '';
                       for (const key of Object.keys(record)) {
@@ -689,9 +727,9 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                     }
                   };
                 }
-                if (it.menusItems !== undefined) {
+                if (item.menusItems !== undefined) {
                   return {
-                    ...it,
+                    ...item,
                     render: (value: never, record: {}) => {
                       return <Space size={8}>
                         {it.menusItems?.filter(it => {
@@ -740,7 +778,7 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                     }
                   };
                 }
-                return it;
+                return item;
               });
             })?.[0] as never}
           scroll={{ x: 'max-content' }}
