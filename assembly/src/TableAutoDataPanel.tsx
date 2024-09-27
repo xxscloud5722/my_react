@@ -317,16 +317,27 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
                 it.key = new Date().getTime() + '---' + it.key;
               }
               // 是否加载远程下拉选数据
-              if ((it.valueType?.toUpperCase() || '') === 'SELECT' && it.valueCode !== undefined && it.valueCode !== '') {
-                const selectItem: any = {};
-                (await requestSelectValue(it.valueCode)).forEach(it => {
-                  selectItem[it.value] = {
-                    text: it.label,
-                    status: it.value
+              if (it.valueCode !== undefined && it.valueCode !== '') {
+                if ((it.valueType?.toUpperCase() || '') === 'SELECT') {
+                  const selectItem: any = {};
+                  (await requestSelectValue(it.valueCode)).forEach(it => {
+                    selectItem[it.value] = {
+                      text: it.label,
+                      status: it.value
+                    };
+                  });
+                  it.valueEnum = selectItem;
+                  continue;
+                }
+                if ((it.valueType?.toUpperCase() || '') === 'CASCADER') {
+                  const options = await requestSelectValue(it.valueCode);
+                  it.fieldProps = () => {
+                    return {
+                      options
+                    };
                   };
-                });
-                it.valueEnum = selectItem;
-                continue;
+                  continue;
+                }
               }
               // 是否将下拉选数组转成顺序对象
               if ((it.valueType?.toUpperCase() || '') === 'SELECT' && Array.isArray(it.valueEnum)) {
@@ -382,6 +393,14 @@ const Component = forwardRef<TableAutoDataPanelRef, TableAutoDataPanelProps>((pr
         const index = string.indexOf('_');
         if (index > -1) {
           params[key] = string.substring(index + 1);
+        }
+        continue;
+      }
+      // 级联
+      if ((formItem.valueType || '').toUpperCase()
+        .indexOf('CASCADER') > -1) {
+        if (Array.isArray(value)) {
+          params[key] = value[value.length - 1];
         }
         continue;
       }
